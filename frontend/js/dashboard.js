@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         : user.email.split('@')[0];
     document.getElementById('user-info').textContent = `👤 ${userName}`;
     
+    // Mostrar botón de administración si es admin
+    if (user.email === 'admin@smartunibot.com') {
+        document.getElementById('admin-btn').style.display = 'inline-block';
+    }
+    
     // Cargar datos
     await loadDashboard();
 });
@@ -175,7 +180,7 @@ function renderTasksList() {
             <div class="task-item ${isCompleted ? 'completed' : ''}" style="border-left: 4px solid ${borderColor}">
                 <div class="task-checkbox">
                     <input type="checkbox" ${isCompleted ? 'checked' : ''} 
-                           onchange="toggleTaskComplete(${task.taskId}, this.checked)">
+                           onchange="toggleTaskCompleteAction(${task.taskId}, this.checked)">
                 </div>
                 <div class="task-info">
                     <div class="task-header">
@@ -359,14 +364,15 @@ async function deleteClassItem(classId) {
 }
 
 // Borrar todo el semestre
-async function clearSemester() {
+async function clearSemesterAction() {
     if (!confirm('⚠️ ¿Estás seguro de borrar TODO tu horario? Esta acción no se puede deshacer.')) return;
     
     try {
+        showLoading();
         const response = await clearSemester();
         
         if (response.success) {
-            showNotification(`${response.data.deletedCount} clase(s) eliminada(s)`, 'success');
+            showNotification('Horario eliminado correctamente', 'success');
             await loadSchedule();
             renderQuickView();
         } else {
@@ -375,6 +381,8 @@ async function clearSemester() {
     } catch (error) {
         console.error('Error clearing semester:', error);
         showNotification('Error al borrar horario', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -475,9 +483,9 @@ async function deleteTaskItem(taskId) {
 }
 
 // Toggle completar tarea
-async function toggleTaskComplete(taskId, isCompleted) {
+async function toggleTaskCompleteAction(taskId, isCompleted) {
     try {
-        const response = await updateTask({ taskId, isCompleted });
+        const response = await toggleTaskComplete(taskId, isCompleted);
         
         if (response.success) {
             showNotification(isCompleted ? 'Tarea completada ✅' : 'Tarea marcada como pendiente', 'success');
@@ -485,19 +493,21 @@ async function toggleTaskComplete(taskId, isCompleted) {
             renderQuickView();
         } else {
             showNotification(response.message || 'Error al actualizar', 'error');
-            // Revertir checkbox
-            event.target.checked = !isCompleted;
         }
     } catch (error) {
         console.error('Error toggling task:', error);
         showNotification('Error al actualizar tarea', 'error');
-        event.target.checked = !isCompleted;
     }
 }
 
 // Ir al chatbot
 function goToChatbot() {
     window.location.href = 'chatbot.html';
+}
+
+// Ir al panel de administración de usuarios
+function goToAdminUsers() {
+    window.location.href = 'admin-users.html';
 }
 
 // Cerrar sesión

@@ -17,6 +17,7 @@
             <div class="header-right">
                 <span class="user-info" id="user-info">Cargando...</span>
                 <button class="btn-secondary" onclick="goToChatbot()">💬 Chatbot</button>
+                <button class="btn-secondary" onclick="goToAdminUsers()" id="admin-btn" style="display: none;">👥 Usuarios</button>
                 <button class="btn-danger" onclick="handleLogout()">🚪 Salir</button>
             </div>
         </header>
@@ -51,7 +52,7 @@
                     <h2>📅 Mi Horario Semanal</h2>
                     <div class="section-actions">
                         <button class="btn-primary" onclick="openClassModal()">➕ Añadir Clase</button>
-                        <button class="btn-danger" onclick="clearSemester()">🗑️ Borrar Todo</button>
+                        <button class="btn-danger" onclick="clearSemesterAction()">🗑️ Borrar Todo</button>
                     </div>
                 </div>
                 <div class="schedule-grid" id="schedule-grid">
