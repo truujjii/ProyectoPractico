@@ -6,6 +6,30 @@
 const API_BASE_URL = '/api';
 
 /**
+ * Convertir objeto de camelCase a snake_case para Supabase
+ */
+function toSnakeCase(obj) {
+    const result = {};
+    for (const key in obj) {
+        const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        result[snakeKey] = obj[key];
+    }
+    return result;
+}
+
+/**
+ * Convertir objeto de snake_case a camelCase desde Supabase
+ */
+function toCamelCase(obj) {
+    const result = {};
+    for (const key in obj) {
+        const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+        result[camelKey] = obj[key];
+    }
+    return result;
+}
+
+/**
  * Helper para hacer peticiones fetch con manejo de errores
  */
 async function apiFetch(endpoint, options = {}) {
@@ -179,12 +203,22 @@ async function createClass(classData) {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
         
+        // Convertir a snake_case y añadir campos necesarios
+        const dbData = {
+            user_id: user.id,
+            subject_name: classData.subjectName,
+            day_of_week: classData.dayOfWeek,
+            start_time: classData.startTime,
+            end_time: classData.endTime,
+            location: classData.location || null,
+            professor: classData.professor || null,
+            semester_year: new Date().getFullYear(),
+            semester_period: new Date().getMonth() < 6 ? 'Primavera' : 'Otoño'
+        };
+        
         const { data, error } = await supabaseClient
             .from('classes')
-            .insert([{
-                user_id: user.id,
-                ...classData
-            }])
+            .insert([dbData])
             .select()
             .single();
         
@@ -208,9 +242,19 @@ async function createClass(classData) {
  */
 async function updateClass(classId, classData) {
     try {
+        // Convertir a snake_case
+        const dbData = {
+            subject_name: classData.subjectName,
+            day_of_week: classData.dayOfWeek,
+            start_time: classData.startTime,
+            end_time: classData.endTime,
+            location: classData.location || null,
+            professor: classData.professor || null
+        };
+        
         const { data, error } = await supabaseClient
             .from('classes')
-            .update(classData)
+            .update(dbData)
             .eq('id', classId)
             .select()
             .single();
@@ -331,13 +375,20 @@ async function createTask(taskData) {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
         
+        // Convertir a snake_case
+        const dbData = {
+            user_id: user.id,
+            title: taskData.title,
+            description: taskData.description || null,
+            subject: taskData.subject || null,
+            due_date: taskData.dueDate,
+            priority: taskData.priority || 'Media',
+            is_completed: false
+        };
+        
         const { data, error } = await supabaseClient
             .from('tasks')
-            .insert([{
-                user_id: user.id,
-                completed: false,
-                ...taskData
-            }])
+            .insert([dbData])
             .select()
             .single();
         
