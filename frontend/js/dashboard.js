@@ -1,0 +1,498 @@
+// Estado global
+let currentSchedule = [];
+let currentTasks = [];
+let currentFilter = 'all';
+let editingClassId = null;
+let editingTaskId = null;
+
+// Inicializar dashboard
+document.addEventListener('DOMContentLoaded', async () => {
+    // Verificar autenticación
+    const sessionId = localStorage.getItem('sessionId');
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    
+    if (!sessionId || !user) {
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Mostrar información del usuario
+    const userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email;
+    document.getElementById('user-info').textContent = `👤 ${userName}`;
+    
+    // Cargar datos
+    await loadDashboard();
+});
+
+// Cargar todo el dashboard
+async function loadDashboard() {
+    showLoading();
+    
+    try {
+        // Cargar horario y tareas en paralelo
+        await Promise.all([
+            loadSchedule(),
+            loadTasks()
+        ]);
+        
+        // Renderizar quick view
+        renderQuickView();
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showNotification('Error al cargar el dashboard', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Cargar horario
+async function loadSchedule() {
+    try {
+        const response = await getSchedule();
+        if (response.success) {
+            currentSchedule = response.data;
+            renderScheduleGrid();
+        }
+    } catch (error) {
+        console.error('Error loading schedule:', error);
+        showNotification('Error al cargar horario', 'error');
+    }
+}
+
+// Renderizar grid de horario semanal
+function renderScheduleGrid() {
+    const grid = document.getElementById('schedule-grid');
+    
+    if (currentSchedule.length === 0) {
+        grid.innerHTML = '<div class="empty-state">📅 No tienes clases programadas. ¡Añade tu primera clase!</div>';
+        return;
+    }
+    
+    // Días de la semana
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    
+    let html = '';
+    
+    // Crear columnas para cada día
+    days.forEach((day, index) => {
+        const dayClasses = currentSchedule.filter(c => c.dayOfWeek === index);
+        
+        html += `
+            <div class="day-column">
+                <div class="day-header">${day}</div>
+                <div class="day-content">
+        `;
+        
+        if (dayClasses.length === 0) {
+            html += '<div class="no-classes">Sin clases</div>';
+        } else {
+            dayClasses.forEach(classItem => {
+                html += `
+                    <div class="class-item">
+                        <div class="class-info">
+                            <div class="class-subject">${escapeHtml(classItem.subjectName)}</div>
+                            <div class="class-time">⏰ ${classItem.startTime} - ${classItem.endTime}</div>
+                            ${classItem.location ? `<div class="class-location">📍 ${escapeHtml(classItem.location)}</div>` : ''}
+                            ${classItem.professor ? `<div class="class-professor">👨‍🏫 ${escapeHtml(classItem.professor)}</div>` : ''}
+                        </div>
+                        <div class="class-actions">
+                            <button class="btn-icon" onclick="editClass(${classItem.classId})" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="deleteClassItem(${classItem.classId})" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    grid.innerHTML = html;
+}
+
+// Cargar tareas
+async function loadTasks() {
+    try {
+        const response = await getTasks(currentFilter);
+        if (response.success) {
+            currentTasks = response.data;
+            renderTasksList();
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showNotification('Error al cargar tareas', 'error');
+    }
+}
+
+// Renderizar lista de tareas
+function renderTasksList() {
+    const list = document.getElementById('tasks-list');
+    
+    if (currentTasks.length === 0) {
+        let message = '📝 No tienes tareas';
+        if (currentFilter === 'pending') message = '✅ ¡No tienes tareas pendientes!';
+        if (currentFilter === 'completed') message = '📋 No has completado ninguna tarea aún';
+        
+        list.innerHTML = `<div class="empty-state">${message}</div>`;
+        return;
+    }
+    
+    let html = '';
+    
+    currentTasks.forEach(task => {
+        const isCompleted = task.isCompleted;
+        const daysLeft = daysUntil(task.dueDate);
+        const borderColor = getTaskBorderColor(daysLeft);
+        const urgencyText = getTaskUrgencyText(daysLeft);
+        
+        html += `
+            <div class="task-item ${isCompleted ? 'completed' : ''}" style="border-left: 4px solid ${borderColor}">
+                <div class="task-checkbox">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                           onchange="toggleTaskComplete(${task.taskId}, this.checked)">
+                </div>
+                <div class="task-info">
+                    <div class="task-header">
+                        <span class="task-title">${escapeHtml(task.title)}</span>
+                        ${task.priority === 'Alta' ? '<span class="task-priority high">⚠️ Alta</span>' : ''}
+                        ${task.priority === 'Media' ? '<span class="task-priority medium">➖ Media</span>' : ''}
+                        ${task.priority === 'Baja' ? '<span class="task-priority low">🔽 Baja</span>' : ''}
+                    </div>
+                    ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
+                    <div class="task-meta">
+                        ${task.subject ? `<span>📚 ${escapeHtml(task.subject)}</span>` : ''}
+                        <span>📅 ${formatDate(task.dueDate)}</span>
+                        ${!isCompleted ? `<span>${urgencyText}</span>` : '<span>✅ Completada</span>'}
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="btn-icon" onclick="editTask(${task.taskId})" title="Editar">✏️</button>
+                    <button class="btn-icon" onclick="deleteTaskItem(${task.taskId})" title="Eliminar">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    list.innerHTML = html;
+}
+
+// Renderizar quick view cards
+function renderQuickView() {
+    // Próxima clase
+    const nextClassCard = document.getElementById('next-class-card').querySelector('.quick-content');
+    const today = new Date().getDay();
+    const todayClasses = currentSchedule.filter(c => c.dayOfWeek === today);
+    
+    if (todayClasses.length > 0) {
+        const now = new Date();
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const nextClass = todayClasses.find(c => c.startTime > currentTime) || todayClasses[0];
+        
+        nextClassCard.innerHTML = `
+            <p class="quick-title">${escapeHtml(nextClass.subjectName)}</p>
+            <p class="quick-time">⏰ ${nextClass.startTime}</p>
+            ${nextClass.location ? `<p class="quick-location">📍 ${escapeHtml(nextClass.location)}</p>` : ''}
+        `;
+    } else {
+        nextClassCard.innerHTML = '<p>🎉 No hay clases hoy</p>';
+    }
+    
+    // Tareas pendientes
+    const pendingTasksCard = document.getElementById('pending-tasks-card').querySelector('.quick-content');
+    const pendingCount = currentTasks.filter(t => !t.isCompleted).length;
+    
+    if (pendingCount === 0) {
+        pendingTasksCard.innerHTML = '<p>✅ ¡Todo al día!</p>';
+    } else {
+        pendingTasksCard.innerHTML = `
+            <p class="quick-number">${pendingCount}</p>
+            <p class="quick-label">${pendingCount === 1 ? 'tarea pendiente' : 'tareas pendientes'}</p>
+        `;
+    }
+    
+    // Clases de hoy
+    const todayScheduleCard = document.getElementById('today-schedule-card').querySelector('.quick-content');
+    
+    if (todayClasses.length === 0) {
+        todayScheduleCard.innerHTML = '<p>📅 Sin clases hoy</p>';
+    } else {
+        todayScheduleCard.innerHTML = `
+            <p class="quick-number">${todayClasses.length}</p>
+            <p class="quick-label">${todayClasses.length === 1 ? 'clase hoy' : 'clases hoy'}</p>
+        `;
+    }
+}
+
+// Filtrar tareas
+async function filterTasks(filter) {
+    currentFilter = filter;
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    await loadTasks();
+}
+
+// Abrir modal de clase
+function openClassModal(classId = null) {
+    editingClassId = classId;
+    const modal = document.getElementById('class-modal');
+    const form = document.getElementById('class-form');
+    const title = document.getElementById('class-modal-title');
+    
+    form.reset();
+    
+    if (classId) {
+        // Modo edición
+        title.textContent = '✏️ Editar Clase';
+        const classItem = currentSchedule.find(c => c.classId === classId);
+        
+        if (classItem) {
+            document.getElementById('class-id').value = classId;
+            document.getElementById('class-subject').value = classItem.subjectName;
+            document.getElementById('class-day').value = classItem.dayOfWeek;
+            document.getElementById('class-start').value = classItem.startTime;
+            document.getElementById('class-end').value = classItem.endTime;
+            document.getElementById('class-location').value = classItem.location || '';
+            document.getElementById('class-professor').value = classItem.professor || '';
+        }
+    } else {
+        // Modo creación
+        title.textContent = '➕ Añadir Clase';
+    }
+    
+    modal.classList.add('active');
+}
+
+// Cerrar modal de clase
+function closeClassModal() {
+    document.getElementById('class-modal').classList.remove('active');
+    editingClassId = null;
+}
+
+// Guardar clase
+async function saveClass(event) {
+    event.preventDefault();
+    
+    const classData = {
+        subjectName: document.getElementById('class-subject').value,
+        dayOfWeek: parseInt(document.getElementById('class-day').value),
+        startTime: document.getElementById('class-start').value,
+        endTime: document.getElementById('class-end').value,
+        location: document.getElementById('class-location').value || null,
+        professor: document.getElementById('class-professor').value || null
+    };
+    
+    try {
+        let response;
+        
+        if (editingClassId) {
+            classData.classId = editingClassId;
+            response = await updateClass(classData);
+        } else {
+            response = await createClass(classData);
+        }
+        
+        if (response.success) {
+            showNotification(editingClassId ? 'Clase actualizada' : 'Clase añadida', 'success');
+            closeClassModal();
+            await loadSchedule();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al guardar', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving class:', error);
+        showNotification('Error al guardar clase', 'error');
+    }
+}
+
+// Editar clase
+function editClass(classId) {
+    openClassModal(classId);
+}
+
+// Eliminar clase
+async function deleteClassItem(classId) {
+    if (!confirm('¿Estás seguro de eliminar esta clase?')) return;
+    
+    try {
+        const response = await deleteClass(classId);
+        
+        if (response.success) {
+            showNotification('Clase eliminada', 'success');
+            await loadSchedule();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al eliminar', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting class:', error);
+        showNotification('Error al eliminar clase', 'error');
+    }
+}
+
+// Borrar todo el semestre
+async function clearSemester() {
+    if (!confirm('⚠️ ¿Estás seguro de borrar TODO tu horario? Esta acción no se puede deshacer.')) return;
+    
+    try {
+        const response = await clearSemester();
+        
+        if (response.success) {
+            showNotification(`${response.data.deletedCount} clase(s) eliminada(s)`, 'success');
+            await loadSchedule();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al borrar', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing semester:', error);
+        showNotification('Error al borrar horario', 'error');
+    }
+}
+
+// Abrir modal de tarea
+function openTaskModal(taskId = null) {
+    editingTaskId = taskId;
+    const modal = document.getElementById('task-modal');
+    const form = document.getElementById('task-form');
+    const title = document.getElementById('task-modal-title');
+    
+    form.reset();
+    
+    if (taskId) {
+        // Modo edición
+        title.textContent = '✏️ Editar Tarea';
+        const task = currentTasks.find(t => t.taskId === taskId);
+        
+        if (task) {
+            document.getElementById('task-id').value = taskId;
+            document.getElementById('task-title').value = task.title;
+            document.getElementById('task-description').value = task.description || '';
+            document.getElementById('task-subject').value = task.subject || '';
+            document.getElementById('task-due-date').value = task.dueDate.split('T')[0];
+            document.getElementById('task-priority').value = task.priority;
+        }
+    } else {
+        // Modo creación
+        title.textContent = '➕ Añadir Tarea';
+    }
+    
+    modal.classList.add('active');
+}
+
+// Cerrar modal de tarea
+function closeTaskModal() {
+    document.getElementById('task-modal').classList.remove('active');
+    editingTaskId = null;
+}
+
+// Guardar tarea
+async function saveTask(event) {
+    event.preventDefault();
+    
+    const taskData = {
+        title: document.getElementById('task-title').value,
+        description: document.getElementById('task-description').value || null,
+        subject: document.getElementById('task-subject').value || null,
+        dueDate: document.getElementById('task-due-date').value,
+        priority: document.getElementById('task-priority').value
+    };
+    
+    try {
+        let response;
+        
+        if (editingTaskId) {
+            taskData.taskId = editingTaskId;
+            response = await updateTask(taskData);
+        } else {
+            response = await createTask(taskData);
+        }
+        
+        if (response.success) {
+            showNotification(editingTaskId ? 'Tarea actualizada' : 'Tarea añadida', 'success');
+            closeTaskModal();
+            await loadTasks();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al guardar', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving task:', error);
+        showNotification('Error al guardar tarea', 'error');
+    }
+}
+
+// Editar tarea
+function editTask(taskId) {
+    openTaskModal(taskId);
+}
+
+// Eliminar tarea
+async function deleteTaskItem(taskId) {
+    if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+    
+    try {
+        const response = await deleteTask(taskId);
+        
+        if (response.success) {
+            showNotification('Tarea eliminada', 'success');
+            await loadTasks();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al eliminar', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showNotification('Error al eliminar tarea', 'error');
+    }
+}
+
+// Toggle completar tarea
+async function toggleTaskComplete(taskId, isCompleted) {
+    try {
+        const response = await updateTask({ taskId, isCompleted });
+        
+        if (response.success) {
+            showNotification(isCompleted ? 'Tarea completada ✅' : 'Tarea marcada como pendiente', 'success');
+            await loadTasks();
+            renderQuickView();
+        } else {
+            showNotification(response.message || 'Error al actualizar', 'error');
+            // Revertir checkbox
+            event.target.checked = !isCompleted;
+        }
+    } catch (error) {
+        console.error('Error toggling task:', error);
+        showNotification('Error al actualizar tarea', 'error');
+        event.target.checked = !isCompleted;
+    }
+}
+
+// Ir al chatbot
+function goToChatbot() {
+    window.location.href = 'chatbot.html';
+}
+
+// Cerrar sesión
+async function handleLogout() {
+    if (!confirm('¿Estás seguro de cerrar sesión?')) return;
+    
+    try {
+        await logout();
+        localStorage.removeItem('sessionId');
+        localStorage.removeItem('user');
+        window.location.href = 'index.html';
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Borrar datos locales de todas formas
+        localStorage.removeItem('sessionId');
+        localStorage.removeItem('user');
+        window.location.href = 'index.html';
+    }
+}

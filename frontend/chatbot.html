@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot - Smart UNI-BOT</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+</head>
+<body>
+    <div class="chatbot-container">
+        <!-- Header -->
+        <header class="chatbot-header">
+            <button class="back-button" onclick="goBack()">← Volver</button>
+            <h1>🤖 Asistente Académico</h1>
+            <div class="header-spacer"></div>
+        </header>
+
+        <!-- Messages Area -->
+        <div class="messages-container" id="messages-container">
+            <div class="welcome-message">
+                <div class="bot-avatar">🤖</div>
+                <div class="message-bubble bot-message">
+                    <p>¡Hola! 👋 Soy tu asistente académico.</p>
+                    <p>Puedo ayudarte con:</p>
+                    <ul>
+                        <li>📅 Consultar tu horario de hoy o mañana</li>
+                        <li>📝 Ver tus tareas pendientes</li>
+                        <li>⏰ Saber cuál es tu próxima tarea</li>
+                        <li>📊 Estadísticas de tu progreso</li>
+                    </ul>
+                    <p>¡Pregúntame lo que necesites!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <form id="chat-form" onsubmit="sendMessage(event)">
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    placeholder="Escribe tu pregunta..." 
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit" id="send-button">
+                    <span class="send-icon">📤</span>
+                </button>
+            </form>
+            <div class="quick-questions">
+                <button class="quick-btn" onclick="quickQuestion('¿Qué clases tengo hoy?')">📅 Clases hoy</button>
+                <button class="quick-btn" onclick="quickQuestion('¿Cuántas tareas tengo pendientes?')">📝 Tareas</button>
+                <button class="quick-btn" onclick="quickQuestion('¿Cuál es mi próxima tarea?')">⏰ Próxima</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chatbot.js"></script>
+</body>
+</html>

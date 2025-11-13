@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart UNI-BOT</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>🎓 Smart UNI-BOT</h1>
+            </div>
+            <div class="header-right">
+                <span class="user-info" id="user-info">Cargando...</span>
+                <button class="btn-secondary" onclick="goToChatbot()">💬 Chatbot</button>
+                <button class="btn-danger" onclick="handleLogout()">🚪 Salir</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Quick View Cards -->
+            <section class="quick-view">
+                <div class="quick-card" id="next-class-card">
+                    <h3>📚 Próxima Clase</h3>
+                    <div class="quick-content">
+                        <p class="loading-text">Cargando...</p>
+                    </div>
+                </div>
+                <div class="quick-card" id="pending-tasks-card">
+                    <h3>✅ Tareas Pendientes</h3>
+                    <div class="quick-content">
+                        <p class="loading-text">Cargando...</p>
+                    </div>
+                </div>
+                <div class="quick-card" id="today-schedule-card">
+                    <h3>📅 Clases Hoy</h3>
+                    <div class="quick-content">
+                        <p class="loading-text">Cargando...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Weekly Schedule Section -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2>📅 Mi Horario Semanal</h2>
+                    <div class="section-actions">
+                        <button class="btn-primary" onclick="openClassModal()">➕ Añadir Clase</button>
+                        <button class="btn-danger" onclick="clearSemester()">🗑️ Borrar Todo</button>
+                    </div>
+                </div>
+                <div class="schedule-grid" id="schedule-grid">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Tasks Section -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2>📝 Mis Tareas</h2>
+                    <button class="btn-primary" onclick="openTaskModal()">➕ Añadir Tarea</button>
+                </div>
+                <div class="tasks-filters">
+                    <button class="filter-btn active" onclick="filterTasks('all')">Todas</button>
+                    <button class="filter-btn" onclick="filterTasks('pending')">Pendientes</button>
+                    <button class="filter-btn" onclick="filterTasks('completed')">Completadas</button>
+                </div>
+                <div class="tasks-list" id="tasks-list">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Add/Edit Class -->
+    <div class="modal-overlay" id="class-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="class-modal-title">➕ Añadir Clase</h2>
+                <button class="modal-close" onclick="closeClassModal()">&times;</button>
+            </div>
+            <form id="class-form" onsubmit="saveClass(event)">
+                <input type="hidden" id="class-id">
+                
+                <div class="form-group">
+                    <label for="class-subject">Asignatura *</label>
+                    <input type="text" id="class-subject" required placeholder="Ej: Arquitecturas Inteligentes">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="class-day">Día *</label>
+                        <select id="class-day" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="1">Lunes</option>
+                            <option value="2">Martes</option>
+                            <option value="3">Miércoles</option>
+                            <option value="4">Jueves</option>
+                            <option value="5">Viernes</option>
+                            <option value="6">Sábado</option>
+                            <option value="0">Domingo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-start">Hora Inicio *</label>
+                        <input type="time" id="class-start" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-end">Hora Fin *</label>
+                        <input type="time" id="class-end" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="class-location">Ubicación</label>
+                    <input type="text" id="class-location" placeholder="Ej: Aula B3-101">
+                </div>
+
+                <div class="form-group">
+                    <label for="class-professor">Profesor/a</label>
+                    <input type="text" id="class-professor" placeholder="Ej: Dr. García López">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeClassModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Task -->
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="task-modal-title">➕ Añadir Tarea</h2>
+                <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+            </div>
+            <form id="task-form" onsubmit="saveTask(event)">
+                <input type="hidden" id="task-id">
+                
+                <div class="form-group">
+                    <label for="task-title">Título *</label>
+                    <input type="text" id="task-title" required placeholder="Ej: Entrega Proyecto Final">
+                </div>
+
+                <div class="form-group">
+                    <label for="task-description">Descripción</label>
+                    <textarea id="task-description" rows="3" placeholder="Detalles de la tarea..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-subject">Asignatura</label>
+                        <input type="text" id="task-subject" placeholder="Ej: Arquitecturas Inteligentes">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-due-date">Fecha Límite *</label>
+                        <input type="date" id="task-due-date" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-priority">Prioridad</label>
+                    <select id="task-priority">
+                        <option value="Baja">Baja</option>
+                        <option value="Media" selected>Media</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeTaskModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

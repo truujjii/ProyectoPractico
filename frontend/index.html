@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart UNI-BOT - Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, var(--uab-green-dark) 0%, var(--uab-green-primary) 50%, var(--uab-green-light) 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            background: var(--uab-white);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 3rem;
+            max-width: 450px;
+            width: 100%;
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo h1 {
+            color: var(--uab-green-primary);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .logo p {
+            color: var(--uab-text-light);
+            font-size: 1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #E0E0E0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--uab-text-light);
+            transition: all var(--transition-fast);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab.active {
+            color: var(--uab-green-primary);
+            border-bottom-color: var(--uab-green-primary);
+        }
+        
+        .tab:hover {
+            color: var(--uab-green-primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 2rem 1.5rem;
+            }
+            
+            .logo h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <h1>🤖 Smart UNI-BOT</h1>
+            <p>Tu asistente académico UAB</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">Iniciar Sesión</div>
+            <div class="tab" onclick="switchTab('register')">Registrarse</div>
+        </div>
+        
+        <!-- Login Form -->
+        <div id="login-tab" class="tab-content active">
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="login-email" 
+                        name="email" 
+                        placeholder="tu.email@estudiants.uab.cat"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        name="password" 
+                        placeholder="Mínimo 8 caracteres"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+        
+        <!-- Register Form -->
+        <div id="register-tab" class="tab-content">
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        name="email" 
+                        placeholder="tu.email@estudiants.uab.cat"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        name="password" 
+                        placeholder="Mínimo 8 caracteres"
+                        required
+                        minlength="8"
+                    >
+                    <span class="input-error" id="password-error"></span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-password-confirm">Confirmar Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="register-password-confirm" 
+                        name="password-confirm" 
+                        placeholder="Repite tu contraseña"
+                        required
+                        minlength="8"
+                    >
+                    <span class="input-error" id="password-confirm-error"></span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-firstname">Nombre (opcional)</label>
+                    <input 
+                        type="text" 
+                        id="register-firstname" 
+                        name="firstname" 
+                        placeholder="Tu nombre"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-lastname">Apellidos (opcional)</label>
+                    <input 
+                        type="text" 
+                        id="register-lastname" 
+                        name="lastname" 
+                        placeholder="Tus apellidos"
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Crear Cuenta
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
