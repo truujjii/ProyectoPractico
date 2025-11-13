@@ -146,48 +146,139 @@ function getCurrentUser() {
  * Obtener todo el horario del usuario
  */
 async function getSchedule() {
-    return await apiFetch('/schedule/getSchedule', {
-        method: 'GET'
-    });
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        const { data, error } = await supabaseClient
+            .from('classes')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('day_of_week', { ascending: true })
+            .order('start_time', { ascending: true });
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { classes: data }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Crear nueva clase
  */
 async function createClass(classData) {
-    return await apiFetch('/schedule/createClass', {
-        method: 'POST',
-        body: JSON.stringify(classData)
-    });
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        const { data, error } = await supabaseClient
+            .from('classes')
+            .insert([{
+                user_id: user.id,
+                ...classData
+            }])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { class: data },
+            message: 'Clase creada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Actualizar clase existente
  */
 async function updateClass(classId, classData) {
-    return await apiFetch('/schedule/updateClass', {
-        method: 'PUT',
-        body: JSON.stringify({ classId, ...classData })
-    });
+    try {
+        const { data, error } = await supabaseClient
+            .from('classes')
+            .update(classData)
+            .eq('id', classId)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { class: data },
+            message: 'Clase actualizada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Eliminar clase
  */
 async function deleteClass(classId) {
-    return await apiFetch('/schedule/deleteClass', {
-        method: 'DELETE',
-        body: JSON.stringify({ classId })
-    });
+    try {
+        const { error } = await supabaseClient
+            .from('classes')
+            .delete()
+            .eq('id', classId);
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            message: 'Clase eliminada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Borrar todo el semestre
  */
 async function clearSemester() {
-    return await apiFetch('/schedule/clearSemester', {
-        method: 'DELETE'
-    });
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        const { error } = await supabaseClient
+            .from('classes')
+            .delete()
+            .eq('user_id', user.id);
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            message: 'Semestre borrado exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 // ============================================
@@ -199,39 +290,121 @@ async function clearSemester() {
  * @param {string} filter - 'all', 'pending', 'completed'
  */
 async function getTasks(filter = 'all') {
-    return await apiFetch(`/tasks/getTasks?filter=${filter}`, {
-        method: 'GET'
-    });
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        let query = supabaseClient
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id);
+        
+        if (filter === 'pending') {
+            query = query.eq('completed', false);
+        } else if (filter === 'completed') {
+            query = query.eq('completed', true);
+        }
+        
+        query = query.order('due_date', { ascending: true });
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { tasks: data }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Crear nueva tarea
  */
 async function createTask(taskData) {
-    return await apiFetch('/tasks/createTask', {
-        method: 'POST',
-        body: JSON.stringify(taskData)
-    });
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .insert([{
+                user_id: user.id,
+                completed: false,
+                ...taskData
+            }])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { task: data },
+            message: 'Tarea creada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Actualizar tarea existente
  */
 async function updateTask(taskId, taskData) {
-    return await apiFetch('/tasks/updateTask', {
-        method: 'PUT',
-        body: JSON.stringify({ taskId, ...taskData })
-    });
+    try {
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .update(taskData)
+            .eq('id', taskId)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { task: data },
+            message: 'Tarea actualizada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
  * Eliminar tarea
  */
 async function deleteTask(taskId) {
-    return await apiFetch('/tasks/deleteTask', {
-        method: 'DELETE',
-        body: JSON.stringify({ taskId })
-    });
+    try {
+        const { error } = await supabaseClient
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            message: 'Tarea eliminada exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
 }
 
 /**
@@ -239,8 +412,8 @@ async function deleteTask(taskId) {
  */
 async function toggleTaskComplete(taskId, isCompleted) {
     return await updateTask(taskId, { 
-        isCompleted,
-        completedAt: isCompleted ? new Date().toISOString() : null
+        completed: isCompleted,
+        completed_at: isCompleted ? new Date().toISOString() : null
     });
 }
 
@@ -252,8 +425,11 @@ async function toggleTaskComplete(taskId, isCompleted) {
  * Enviar consulta al chatbot
  */
 async function queryChatbot(message) {
-    return await apiFetch('/chatbot/query', {
-        method: 'POST',
-        body: JSON.stringify({ message })
-    });
+    // Por ahora retornamos un mensaje simple ya que no tenemos el backend
+    return {
+        success: true,
+        data: {
+            response: 'Lo siento, el chatbot aún no está disponible en esta versión. Estamos trabajando en ello.'
+        }
+    };
 }
