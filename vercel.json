@@ -1,28 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
-    }
-  ],
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://fvfzscnycdzmxxsrgiyd.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_SERVICE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2ZnpzY255Y2R6bXh4c3JnaXlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAxNjI5MCwiZXhwIjoyMDc4NTkyMjkwfQ.OHi1aVkdx5jygph_v1yPdCogxiy0HOCGKWMlT_yChi4",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2ZnpzY255Y2R6bXh4c3JnaXlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMTYyOTAsImV4cCI6MjA3ODU5MjI5MH0.zm7Ld_92RDdR3bDHHIHTU1OQxqUJesPMLjtbCqfW9no"
-  }
+  ]
 }
