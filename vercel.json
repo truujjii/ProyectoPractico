@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ],
+  "env": {
+    "SUPABASE_URL": "https://fvfzscnycdzmxxsrgiyd.supabase.co",
+    "SUPABASE_SERVICE_KEY": "@supabase-service-key",
+    "SUPABASE_ANON_KEY": "@supabase-anon-key"
+  }
+}
