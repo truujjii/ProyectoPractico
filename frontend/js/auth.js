@@ -101,14 +101,21 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         const response = await register(email, password, firstName, lastName);
         
         if (response.success) {
-            showNotification('¡Cuenta creada! Ahora puedes iniciar sesión', 'success');
-            
-            // Cambiar a tab de login después de 2 segundos
-            setTimeout(() => {
-                switchTab('login');
-                document.getElementById('login-email').value = email;
-                document.getElementById('register-form').reset();
-            }, 2000);
+            // Si hay sesión, el usuario ya está logueado automáticamente
+            if (response.data.session) {
+                showNotification('¡Cuenta creada! Redirigiendo...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                // Fallback: mostrar mensaje para iniciar sesión
+                showNotification('¡Cuenta creada! Ahora puedes iniciar sesión', 'success');
+                setTimeout(() => {
+                    switchTab('login');
+                    document.getElementById('login-email').value = email;
+                    document.getElementById('register-form').reset();
+                }, 2000);
+            }
         } else {
             showNotification(response.message || 'Error al crear cuenta', 'error');
         }

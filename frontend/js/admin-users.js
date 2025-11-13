@@ -83,8 +83,8 @@ function renderUsersTable() {
             ? new Date(user.last_sign_in_at).toLocaleDateString('es-ES') 
             : 'Nunca';
         
-        const isConfirmed = user.email_confirmed_at ? 'confirmed' : 'active';
-        const statusText = user.email_confirmed_at ? '✅ Confirmado' : '⏳ Pendiente';
+        const isConfirmed = user.email_confirmed_at ? 'confirmed' : 'pending';
+        const statusText = user.email_confirmed_at ? '✅ Confirmado' : '⚠️ Sin confirmar';
         
         html += `
             <tr>
@@ -101,6 +101,11 @@ function renderUsersTable() {
                 <td class="user-date">${lastSignIn}</td>
                 <td>
                     <div class="user-actions">
+                        ${!user.email_confirmed_at ? `
+                            <button class="btn-icon" onclick="confirmUserEmail('${user.id}', '${escapeHtml(user.email)}')" title="Confirmar email">
+                                ✅
+                            </button>
+                        ` : ''}
                         <button class="btn-icon" onclick="viewUserDetails('${user.id}')" title="Ver detalles">
                             👁️
                         </button>
@@ -139,6 +144,32 @@ function viewUserDetails(userId) {
     `.trim();
     
     alert(details);
+}
+
+// Confirmar email del usuario manualmente
+async function confirmUserEmail(userId, userEmail) {
+    if (!confirm(`¿Confirmar el email de ${userEmail}?\n\nEsto permitirá al usuario acceder a la aplicación.`)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const { error } = await supabaseClient.auth.admin.updateUserById(
+            userId,
+            { email_confirm: true }
+        );
+        
+        if (error) throw error;
+        
+        showNotification('Email confirmado correctamente', 'success');
+        await loadUsers();
+    } catch (error) {
+        console.error('Error confirming email:', error);
+        showNotification('Error al confirmar email: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // Resetear contraseña

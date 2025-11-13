@@ -79,18 +79,26 @@ async function register(email, password, firstName = '', lastName = '') {
             email: email,
             password: password,
             options: {
+                emailRedirectTo: window.location.origin + '/dashboard.html',
                 data: {
                     first_name: firstName,
-                    last_name: lastName
+                    last_name: lastName,
+                    email_confirmed: true // Auto-confirmar email
                 }
             }
         });
         
         if (error) throw error;
         
+        // Auto-login después del registro
+        if (data.session) {
+            localStorage.setItem('sessionId', data.session.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
         return {
             success: true,
-            data: { user: data.user },
+            data: { user: data.user, session: data.session },
             message: 'Usuario registrado exitosamente'
         };
     } catch (error) {
