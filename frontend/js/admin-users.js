@@ -32,24 +32,20 @@ async function loadUsers() {
     showLoading();
     
     try {
-        // Obtener todos los usuarios con sus roles
+        // Obtener todos los usuarios con sus roles Y emails desde la vista
         const { data, error } = await supabaseClient
-            .from('user_roles')
-            .select(`
-                user_id,
-                role,
-                created_at
-            `);
+            .from('users_with_roles')
+            .select('*')
+            .order('created_at', { ascending: false });
         
         if (error) throw error;
         
-        // Obtener información adicional de cada usuario desde auth.users
-        // Como no podemos acceder directamente a auth.users, mostraremos lo que tenemos
-        allUsers = data.map(userRole => ({
-            id: userRole.user_id,
-            role: userRole.role,
-            created_at: userRole.created_at,
-            email: 'Cargando...' // Se llenará dinámicamente
+        allUsers = data.map(user => ({
+            id: user.user_id,
+            email: user.email,
+            role: user.role,
+            created_at: user.user_created_at || user.created_at,
+            last_sign_in_at: user.last_sign_in_at
         }));
         
         renderUsersTable();
@@ -66,7 +62,7 @@ async function loadUsers() {
                     Error: ${error.message}
                 </p>
                 <p style="color: #999; font-size: 0.9rem; margin-top: 1rem;">
-                    Asegúrate de haber ejecutado el script SQL <code>add-user-roles.sql</code>
+                    Asegúrate de haber ejecutado el script SQL para crear la vista <code>users_with_roles</code>
                 </p>
             </div>
         `;
@@ -92,9 +88,10 @@ function renderUsersTable() {
         <table>
             <thead>
                 <tr>
-                    <th>ID de Usuario</th>
+                    <th>Email</th>
                     <th>Rol</th>
                     <th>Fecha de Registro</th>
+                    <th>Último Acceso</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -103,25 +100,32 @@ function renderUsersTable() {
     
     allUsers.forEach(user => {
         const createdAt = new Date(user.created_at).toLocaleDateString('es-ES');
+        const lastSignIn = user.last_sign_in_at 
+            ? new Date(user.last_sign_in_at).toLocaleDateString('es-ES')
+            : 'Nunca';
         const roleClass = user.role === 'admin' ? 'confirmed' : 'active';
         const roleIcon = user.role === 'admin' ? '👑' : '👤';
         
         html += `
             <tr>
                 <td>
-                    <div class="user-email">${user.id.substring(0, 8)}...</div>
+                    <div class="user-email">${escapeHtml(user.email || 'Sin email')}</div>
+                    <div class="user-date" style="font-size: 0.8rem; color: #999;">
+                        ID: ${user.id.substring(0, 8)}...
+                    </div>
                 </td>
                 <td>
                     <span class="user-status status-${roleClass}">${roleIcon} ${user.role}</span>
                 </td>
                 <td class="user-date">${createdAt}</td>
+                <td class="user-date">${lastSignIn}</td>
                 <td>
                     <div class="user-actions">
                         ${user.role !== 'admin' ? `
-                            <button class="btn-icon" onclick="promoteToAdmin('${user.id}')" title="Promover a Admin">
+                            <button class="btn-icon" onclick="promoteToAdmin('${user.id}', '${escapeHtml(user.email)}')" title="Promover a Admin">
                                 👑
                             </button>
-                            <button class="btn-icon" onclick="deleteUserRole('${user.id}')" title="Eliminar usuario">
+                            <button class="btn-icon" onclick="deleteUserRole('${user.id}', '${escapeHtml(user.email)}')" title="Eliminar usuario">
                                 🗑️
                             </button>
                         ` : `
@@ -142,8 +146,8 @@ function renderUsersTable() {
 }
 
 // Promover usuario a admin
-async function promoteToAdmin(userId) {
-    if (!confirm('¿Promover este usuario a administrador?\n\nTendrá acceso completo al panel de administración.')) {
+async function promoteToAdmin(userId, userEmail) {
+    if (!confirm(`¿Promover a ${userEmail} a administrador?\n\nTendrá acceso completo al panel de administración.`)) {
         return;
     }
     
@@ -168,8 +172,8 @@ async function promoteToAdmin(userId) {
 }
 
 // Eliminar usuario
-async function deleteUserRole(userId) {
-    if (!confirm('⚠️ ¿Estás seguro de eliminar este usuario?\n\nSe eliminarán todos sus datos (clases, tareas, etc.)')) {
+async function deleteUserRole(userId, userEmail) {
+    if (!confirm(`⚠️ ¿Estás seguro de eliminar al usuario ${userEmail}?\n\nSe eliminarán todos sus datos (clases, tareas, etc.)`)) {
         return;
     }
     
