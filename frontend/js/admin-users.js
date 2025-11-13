@@ -3,6 +3,7 @@
    ============================================ */
 
 let allUsers = [];
+let currentUserRole = null;
 
 // Inicializar página
 document.addEventListener('DOMContentLoaded', async () => {
@@ -15,33 +16,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
+    // Verificar que el usuario es admin
+    await checkAdminRole(user.id);
+    
     // Cargar usuarios
     await loadUsers();
 });
+
+// Verificar si el usuario actual es admin
+async function checkAdminRole(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId)
+            .single();
+        
+        if (error) throw error;
+        
+        currentUserRole = data.role;
+        
+        if (currentUserRole !== 'admin') {
+            alert('⛔ No tienes permisos para acceder a esta página');
+            window.location.href = 'dashboard.html';
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking role:', error);
+        alert('⛔ Error al verificar permisos. Redirigiendo al dashboard...');
+        window.location.href = 'dashboard.html';
+    }
+}
 
 // Cargar todos los usuarios
 async function loadUsers() {
     showLoading();
     
     try {
-        const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+        // Obtener todos los usuarios con sus roles
+        const { data, error } = await supabaseClient
+            .from('user_roles')
+            .select(`
+                user_id,
+                role,
+                created_at
+            `);
         
         if (error) throw error;
         
-        allUsers = data.users;
+        // Obtener información adicional de cada usuario desde auth.users
+        // Como no podemos acceder directamente a auth.users, mostraremos lo que tenemos
+        allUsers = data.map(userRole => ({
+            id: userRole.user_id,
+            role: userRole.role,
+            created_at: userRole.created_at,
+            email: 'Cargando...' // Se llenará dinámicamente
+        }));
+        
         renderUsersTable();
     } catch (error) {
         console.error('Error loading users:', error);
         showNotification('Error al cargar usuarios: ' + error.message, 'error');
         
-        // Si falla la API admin, mostramos mensaje informativo
         document.getElementById('users-container').innerHTML = `
             <div style="padding: 2rem; text-align: center;">
                 <p style="color: #666; margin-bottom: 1rem;">
-                    ⚠️ No se pueden cargar los usuarios con la clave actual.
+                    ⚠️ No se pueden cargar los usuarios.
                 </p>
                 <p style="color: #999; font-size: 0.9rem;">
-                    La administración de usuarios requiere permisos de administrador en Supabase.
+                    Error: ${error.message}
+                </p>
+                <p style="color: #999; font-size: 0.9rem; margin-top: 1rem;">
+                    Asegúrate de haber ejecutado el script SQL <code>add-user-roles.sql</code>
                 </p>
             </div>
         `;
@@ -67,10 +113,9 @@ function renderUsersTable() {
         <table>
             <thead>
                 <tr>
-                    <th>Email</th>
-                    <th>Estado</th>
+                    <th>ID de Usuario</th>
+                    <th>Rol</th>
                     <th>Fecha de Registro</th>
-                    <th>Último Acceso</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -79,42 +124,30 @@ function renderUsersTable() {
     
     allUsers.forEach(user => {
         const createdAt = new Date(user.created_at).toLocaleDateString('es-ES');
-        const lastSignIn = user.last_sign_in_at 
-            ? new Date(user.last_sign_in_at).toLocaleDateString('es-ES') 
-            : 'Nunca';
-        
-        const isConfirmed = user.email_confirmed_at ? 'confirmed' : 'pending';
-        const statusText = user.email_confirmed_at ? '✅ Confirmado' : '⚠️ Sin confirmar';
+        const roleClass = user.role === 'admin' ? 'confirmed' : 'active';
+        const roleIcon = user.role === 'admin' ? '👑' : '👤';
         
         html += `
             <tr>
                 <td>
-                    <div class="user-email">${escapeHtml(user.email)}</div>
-                    <div class="user-date" style="font-size: 0.8rem; color: #999;">
-                        ID: ${user.id.substring(0, 8)}...
-                    </div>
+                    <div class="user-email">${user.id.substring(0, 8)}...</div>
                 </td>
                 <td>
-                    <span class="user-status status-${isConfirmed}">${statusText}</span>
+                    <span class="user-status status-${roleClass}">${roleIcon} ${user.role}</span>
                 </td>
                 <td class="user-date">${createdAt}</td>
-                <td class="user-date">${lastSignIn}</td>
                 <td>
                     <div class="user-actions">
-                        ${!user.email_confirmed_at ? `
-                            <button class="btn-icon" onclick="confirmUserEmail('${user.id}', '${escapeHtml(user.email)}')" title="Confirmar email">
-                                ✅
+                        ${user.role !== 'admin' ? `
+                            <button class="btn-icon" onclick="promoteToAdmin('${user.id}')" title="Promover a Admin">
+                                👑
                             </button>
-                        ` : ''}
-                        <button class="btn-icon" onclick="viewUserDetails('${user.id}')" title="Ver detalles">
-                            👁️
-                        </button>
-                        <button class="btn-icon" onclick="resetUserPassword('${user.id}')" title="Resetear contraseña">
-                            🔑
-                        </button>
-                        <button class="btn-icon" onclick="deleteUser('${user.id}', '${escapeHtml(user.email)}')" title="Eliminar">
-                            🗑️
-                        </button>
+                            <button class="btn-icon" onclick="deleteUserRole('${user.id}')" title="Eliminar usuario">
+                                🗑️
+                            </button>
+                        ` : `
+                            <span style="color: #999; font-size: 0.9rem;">Administrador principal</span>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -129,92 +162,58 @@ function renderUsersTable() {
     container.innerHTML = html;
 }
 
-// Ver detalles del usuario
-function viewUserDetails(userId) {
-    const user = allUsers.find(u => u.id === userId);
-    if (!user) return;
-    
-    const details = `
-📧 Email: ${user.email}
-🆔 ID: ${user.id}
-📅 Registrado: ${new Date(user.created_at).toLocaleString('es-ES')}
-🔐 Email confirmado: ${user.email_confirmed_at ? '✅ Sí' : '❌ No'}
-👤 Último acceso: ${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('es-ES') : 'Nunca'}
-📱 Teléfono: ${user.phone || 'No especificado'}
-    `.trim();
-    
-    alert(details);
-}
-
-// Confirmar email del usuario manualmente
-async function confirmUserEmail(userId, userEmail) {
-    if (!confirm(`¿Confirmar el email de ${userEmail}?\n\nEsto permitirá al usuario acceder a la aplicación.`)) {
+// Promover usuario a admin
+async function promoteToAdmin(userId) {
+    if (!confirm('¿Promover este usuario a administrador?\n\nTendrá acceso completo al panel de administración.')) {
         return;
     }
     
     try {
         showLoading();
         
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(
-            userId,
-            { email_confirm: true }
-        );
+        const { error } = await supabaseClient
+            .from('user_roles')
+            .update({ role: 'admin' })
+            .eq('user_id', userId);
         
         if (error) throw error;
         
-        showNotification('Email confirmado correctamente', 'success');
+        showNotification('Usuario promovido a administrador', 'success');
         await loadUsers();
     } catch (error) {
-        console.error('Error confirming email:', error);
-        showNotification('Error al confirmar email: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Resetear contraseña
-async function resetUserPassword(userId) {
-    const user = allUsers.find(u => u.id === userId);
-    if (!user) return;
-    
-    const newPassword = prompt(`Ingresa la nueva contraseña para ${user.email}:\n(Mínimo 8 caracteres)`);
-    
-    if (!newPassword) return;
-    
-    if (newPassword.length < 8) {
-        showNotification('La contraseña debe tener al menos 8 caracteres', 'error');
-        return;
-    }
-    
-    try {
-        showLoading();
-        
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(
-            userId,
-            { password: newPassword }
-        );
-        
-        if (error) throw error;
-        
-        showNotification('Contraseña actualizada correctamente', 'success');
-    } catch (error) {
-        console.error('Error resetting password:', error);
-        showNotification('Error al resetear contraseña: ' + error.message, 'error');
+        console.error('Error promoting user:', error);
+        showNotification('Error al promover usuario: ' + error.message, 'error');
     } finally {
         hideLoading();
     }
 }
 
 // Eliminar usuario
-async function deleteUser(userId, userEmail) {
-    if (!confirm(`⚠️ ¿Estás seguro de eliminar al usuario ${userEmail}?\n\nEsta acción no se puede deshacer y eliminará todos sus datos.`)) {
+async function deleteUserRole(userId) {
+    if (!confirm('⚠️ ¿Estás seguro de eliminar este usuario?\n\nSe eliminarán todos sus datos (clases, tareas, etc.)')) {
         return;
     }
     
     try {
         showLoading();
         
-        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        // Eliminar tareas del usuario
+        await supabaseClient
+            .from('tasks')
+            .delete()
+            .eq('user_id', userId);
+        
+        // Eliminar clases del usuario
+        await supabaseClient
+            .from('classes')
+            .delete()
+            .eq('user_id', userId);
+        
+        // Eliminar rol del usuario
+        const { error } = await supabaseClient
+            .from('user_roles')
+            .delete()
+            .eq('user_id', userId);
         
         if (error) throw error;
         

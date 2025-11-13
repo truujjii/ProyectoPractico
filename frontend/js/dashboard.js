@@ -22,14 +22,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         : user.email.split('@')[0];
     document.getElementById('user-info').textContent = `👤 ${userName}`;
     
-    // Mostrar botón de administración si es admin
-    if (user.email === 'admin@smartunibot.com') {
-        document.getElementById('admin-btn').style.display = 'inline-block';
-    }
+    // Verificar si es admin para mostrar botón
+    await checkAdminAccess(user.id);
     
     // Cargar datos
     await loadDashboard();
 });
+
+// Verificar si el usuario es admin
+async function checkAdminAccess(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId)
+            .single();
+        
+        if (!error && data && data.role === 'admin') {
+            document.getElementById('admin-btn').style.display = 'inline-block';
+        }
+    } catch (error) {
+        console.log('User role check:', error.message);
+        // Silenciosamente ignorar el error, el botón simplemente no se mostrará
+    }
+}
 
 // Cargar todo el dashboard
 async function loadDashboard() {
