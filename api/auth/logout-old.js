@@ -1,10 +1,21 @@
 const { app } = require('@azure/functions');
-const { supabase } = require('../supabaseClient');
+const sql = require('mssql');
+
+// Configuración de SQL Server
+const config = {
+    server: process.env.SQL_SERVER,
+    database: process.env.SQL_DATABASE,
+    user: process.env.SQL_USER,
+    password: process.env.SQL_PASSWORD,
+    options: {
+        encrypt: true,
+        trustServerCertificate: false
+    }
+};
 
 app.http('logout', {
     methods: ['POST'],
     authLevel: 'anonymous',
-    route: 'auth/logout',
     handler: async (request, context) => {
         context.log('Logout function triggered');
         
@@ -13,23 +24,23 @@ app.http('logout', {
             
             if (!sessionId) {
                 return {
-                    status: 400,
+                    status: 401,
                     jsonBody: {
                         success: false,
-                        message: 'Session ID requerido'
+                        message: 'No autenticado'
                     }
                 };
             }
             
-            // Eliminar sesión
-            const { error } = await supabase
-                .from('sessions')
-                .delete()
-                .eq('sessionid', sessionId);
+            // Conectar a base de datos
+            const pool = await sql.connect(config);
             
-            if (error) {
-                context.error('Logout error:', error);
-            }
+            // Eliminar sesión
+            await pool.request()
+                .input('sessionId', sql.NVarChar, sessionId)
+                .query('DELETE FROM Sessions WHERE SessionID = @sessionId');
+            
+            await pool.close();
             
             return {
                 status: 200,

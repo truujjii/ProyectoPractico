@@ -1,21 +1,14 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
 app.http('createTask', {
@@ -29,8 +22,8 @@ app.http('createTask', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
@@ -41,30 +34,25 @@ app.http('createTask', {
                 return { status: 400, jsonBody: { success: false, message: 'Título y fecha requeridos' } };
             }
             
-            const pool = await sql.connect(config);
+            const { data: newTask, error } = await supabase
+                .from('tasks')
+                .insert([{
+                    userid: userId,
+                    title: title,
+                    description: description || null,
+                    subject: subject || null,
+                    duedate: dueDate,
+                    priority: priority || 'Media',
+                    iscompleted: false
+                }])
+                .select()
+                .single();
             
-            const result = await pool.request()
-                .input('userId', sql.Int, user.UserID)
-                .input('title', sql.NVarChar, title)
-                .input('description', sql.NVarChar, description || null)
-                .input('subject', sql.NVarChar, subject || null)
-                .input('dueDate', sql.Date, dueDate)
-                .input('priority', sql.NVarChar, priority || 'Media')
-                .query(`
-                    INSERT INTO Tasks (UserID, Title, Description, Subject, DueDate, Priority)
-                    OUTPUT INSERTED.TaskID
-                    VALUES (@userId, @title, @description, @subject, @dueDate, @priority)
-                `);
-            
-            await pool.close();
+            if (error) throw error;
             
             return {
                 status: 201,
-                jsonBody: { 
-                    success: true, 
-                    data: { taskId: result.recordset[0].TaskID },
-                    message: 'Tarea creada' 
-                }
+                jsonBody: { success: true, data: { taskId: newTask.taskid }, message: 'Tarea creada' }
             };
         } catch (error) {
             context.error('CreateTask error:', error);

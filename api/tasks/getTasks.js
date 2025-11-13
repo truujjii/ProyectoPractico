@@ -1,21 +1,14 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
 app.http('getTasks', {
@@ -29,47 +22,41 @@ app.http('getTasks', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
-            // Obtener parámetro de filtro (all, pending, completed)
             const filter = request.query.get('filter') || 'all';
             
-            const pool = await sql.connect(config);
+            let query = supabase
+                .from('tasks')
+                .select('*')
+                .eq('userid', userId);
             
-            let whereClause = 'WHERE UserID = @userId';
             if (filter === 'pending') {
-                whereClause += ' AND IsCompleted = 0';
+                query = query.eq('iscompleted', false);
             } else if (filter === 'completed') {
-                whereClause += ' AND IsCompleted = 1';
+                query = query.eq('iscompleted', true);
             }
             
-            const result = await pool.request()
-                .input('userId', sql.Int, user.UserID)
-                .query(`
-                    SELECT 
-                        TaskID as taskId,
-                        Title as title,
-                        Description as description,
-                        Subject as subject,
-                        DueDate as dueDate,
-                        Priority as priority,
-                        IsCompleted as isCompleted,
-                        CompletedAt as completedAt,
-                        CreatedAt as createdAt
-                    FROM Tasks
-                    ${whereClause}
-                    ORDER BY DueDate ASC, Priority DESC
-                `);
+            const { data: tasks, error } = await query.order('duedate');
             
-            await pool.close();
+            if (error) throw error;
             
-            return {
-                status: 200,
-                jsonBody: { success: true, data: result.recordset }
-            };
+            const formattedTasks = tasks.map(t => ({
+                taskId: t.taskid,
+                title: t.title,
+                description: t.description,
+                subject: t.subject,
+                dueDate: t.duedate,
+                priority: t.priority,
+                isCompleted: t.iscompleted,
+                completedAt: t.completedat,
+                createdAt: t.createdat
+            }));
+            
+            return { status: 200, jsonBody: { success: true, data: formattedTasks } };
         } catch (error) {
             context.error('GetTasks error:', error);
             return { status: 500, jsonBody: { success: false, message: 'Error al obtener tareas' } };

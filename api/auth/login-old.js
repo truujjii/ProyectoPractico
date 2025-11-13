@@ -1,12 +1,23 @@
 const { app } = require('@azure/functions');
-const { supabase } = require('../supabaseClient');
+const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+
+// Configuración de SQL Server
+const config = {
+    server: process.env.SQL_SERVER,
+    database: process.env.SQL_DATABASE,
+    user: process.env.SQL_USER,
+    password: process.env.SQL_PASSWORD,
+    options: {
+        encrypt: true,
+        trustServerCertificate: false
+    }
+};
 
 app.http('login', {
     methods: ['POST'],
     authLevel: 'anonymous',
-    route: 'auth/login',
     handler: async (request, context) => {
         context.log('Login function triggered');
         
@@ -25,14 +36,16 @@ app.http('login', {
                 };
             }
             
-            // Buscar usuario
-            const { data: user, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
+            // Conectar a base de datos
+            const pool = await sql.connect(config);
             
-            if (userError || !user) {
+            // Buscar usuario
+            const userResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query('SELECT UserID, Email, PasswordHash, FirstName, LastName FROM Users WHERE Email = @email');
+            
+            if (userResult.recordset.length === 0) {
+                await pool.close();
                 return {
                     status: 401,
                     jsonBody: {
@@ -42,10 +55,13 @@ app.http('login', {
                 };
             }
             
+            const user = userResult.recordset[0];
+            
             // Verificar contraseña
-            const passwordValid = await bcrypt.compare(password, user.passwordhash);
+            const passwordValid = await bcrypt.compare(password, user.PasswordHash);
             
             if (!passwordValid) {
+                await pool.close();
                 return {
                     status: 401,
                     jsonBody: {
@@ -61,23 +77,21 @@ app.http('login', {
             expiresAt.setDate(expiresAt.getDate() + 7); // Expira en 7 días
             
             // Crear sesión
-            const { error: sessionError } = await supabase
-                .from('sessions')
-                .insert([{
-                    sessionid: sessionId,
-                    userid: user.userid,
-                    expiresat: expiresAt.toISOString()
-                }]);
-            
-            if (sessionError) {
-                context.error('Session error:', sessionError);
-            }
+            await pool.request()
+                .input('sessionId', sql.NVarChar, sessionId)
+                .input('userId', sql.Int, user.UserID)
+                .input('expiresAt', sql.DateTime, expiresAt)
+                .query(`
+                    INSERT INTO Sessions (SessionID, UserID, CreatedAt, ExpiresAt)
+                    VALUES (@sessionId, @userId, GETDATE(), @expiresAt)
+                `);
             
             // Actualizar último login
-            await supabase
-                .from('users')
-                .update({ lastlogin: new Date().toISOString() })
-                .eq('userid', user.userid);
+            await pool.request()
+                .input('userId', sql.Int, user.UserID)
+                .query('UPDATE Users SET LastLogin = GETDATE() WHERE UserID = @userId');
+            
+            await pool.close();
             
             return {
                 status: 200,
@@ -86,10 +100,10 @@ app.http('login', {
                     data: {
                         sessionId: sessionId,
                         user: {
-                            userId: user.userid,
-                            email: user.email,
-                            firstName: user.firstname,
-                            lastName: user.lastname
+                            userId: user.UserID,
+                            email: user.Email,
+                            firstName: user.FirstName,
+                            lastName: user.LastName
                         }
                     },
                     message: 'Login exitoso'

@@ -1,21 +1,14 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
 app.http('clearSemester', {
@@ -29,25 +22,25 @@ app.http('clearSemester', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
-            const pool = await sql.connect(config);
+            const { data, error } = await supabase
+                .from('classes')
+                .delete()
+                .eq('userid', userId)
+                .select();
             
-            const result = await pool.request()
-                .input('userId', sql.Int, user.UserID)
-                .query('DELETE FROM Classes WHERE UserID = @userId');
-            
-            await pool.close();
+            if (error) throw error;
             
             return {
                 status: 200,
-                jsonBody: { 
-                    success: true, 
-                    data: { deletedCount: result.rowsAffected[0] },
-                    message: 'Horario completo borrado' 
+                jsonBody: {
+                    success: true,
+                    data: { deletedCount: data.length },
+                    message: 'Horario completo borrado'
                 }
             };
         } catch (error) {

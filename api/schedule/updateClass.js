@@ -1,21 +1,14 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
 app.http('updateClass', {
@@ -29,8 +22,8 @@ app.http('updateClass', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
@@ -41,58 +34,36 @@ app.http('updateClass', {
                 return { status: 400, jsonBody: { success: false, message: 'ClassID requerido' } };
             }
             
-            const pool = await sql.connect(config);
+            // Verificar propiedad
+            const { data: existingClass } = await supabase
+                .from('classes')
+                .select('classid')
+                .eq('classid', classId)
+                .eq('userid', userId)
+                .single();
             
-            // Verificar que la clase pertenece al usuario
-            const checkResult = await pool.request()
-                .input('classId', sql.Int, classId)
-                .input('userId', sql.Int, user.UserID)
-                .query('SELECT ClassID FROM Classes WHERE ClassID = @classId AND UserID = @userId');
-            
-            if (checkResult.recordset.length === 0) {
-                await pool.close();
+            if (!existingClass) {
                 return { status: 404, jsonBody: { success: false, message: 'Clase no encontrada' } };
             }
             
-            // Actualizar
-            let updateQuery = 'UPDATE Classes SET ';
-            const updates = [];
-            const req = pool.request().input('classId', sql.Int, classId).input('userId', sql.Int, user.UserID);
+            // Construir update
+            const updates = {};
+            if (subjectName) updates.subjectname = subjectName;
+            if (dayOfWeek !== undefined) updates.dayofweek = dayOfWeek;
+            if (startTime) updates.starttime = startTime;
+            if (endTime) updates.endtime = endTime;
+            if (location !== undefined) updates.location = location;
+            if (professor !== undefined) updates.professor = professor;
             
-            if (subjectName) {
-                updates.push('SubjectName = @subjectName');
-                req.input('subjectName', sql.NVarChar, subjectName);
-            }
-            if (dayOfWeek) {
-                updates.push('DayOfWeek = @dayOfWeek');
-                req.input('dayOfWeek', sql.Int, dayOfWeek);
-            }
-            if (startTime) {
-                updates.push('StartTime = @startTime');
-                req.input('startTime', sql.Time, startTime);
-            }
-            if (endTime) {
-                updates.push('EndTime = @endTime');
-                req.input('endTime', sql.Time, endTime);
-            }
-            if (location !== undefined) {
-                updates.push('Location = @location');
-                req.input('location', sql.NVarChar, location);
-            }
-            if (professor !== undefined) {
-                updates.push('Professor = @professor');
-                req.input('professor', sql.NVarChar, professor);
-            }
+            const { error } = await supabase
+                .from('classes')
+                .update(updates)
+                .eq('classid', classId)
+                .eq('userid', userId);
             
-            updateQuery += updates.join(', ') + ' WHERE ClassID = @classId AND UserID = @userId';
+            if (error) throw error;
             
-            await req.query(updateQuery);
-            await pool.close();
-            
-            return {
-                status: 200,
-                jsonBody: { success: true, message: 'Clase actualizada' }
-            };
+            return { status: 200, jsonBody: { success: true, message: 'Clase actualizada' } };
         } catch (error) {
             context.error('UpdateClass error:', error);
             return { status: 500, jsonBody: { success: false, message: 'Error al actualizar clase' } };

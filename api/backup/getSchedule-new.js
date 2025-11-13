@@ -1,14 +1,19 @@
 const { app } = require('@azure/functions');
 const { supabase } = require('../supabaseClient');
 
+// Helper para verificar sesión
 async function validateSession(sessionId) {
     const { data: session } = await supabase
         .from('sessions')
-        .select('userid')
+        .select(`
+            userid,
+            users (userid, email, firstname, lastname)
+        `)
         .eq('sessionid', sessionId)
         .gt('expiresat', new Date().toISOString())
         .single();
-    return session ? session.userid : null;
+    
+    return session ? session.users : null;
 }
 
 app.http('getSchedule', {
@@ -18,24 +23,26 @@ app.http('getSchedule', {
     handler: async (request, context) => {
         try {
             const sessionId = request.headers.get('x-session-id');
+            
             if (!sessionId) {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const userId = await validateSession(sessionId);
-            if (!userId) {
+            const user = await validateSession(sessionId);
+            if (!user) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
             const { data: classes, error } = await supabase
                 .from('classes')
                 .select('*')
-                .eq('userid', userId)
+                .eq('userid', user.userid)
                 .order('dayofweek')
                 .order('starttime');
             
             if (error) throw error;
             
+            // Formatear respuesta
             const formattedClasses = classes.map(c => ({
                 classId: c.classid,
                 subjectName: c.subjectname,
@@ -48,7 +55,11 @@ app.http('getSchedule', {
                 semesterPeriod: c.semesterperiod
             }));
             
-            return { status: 200, jsonBody: { success: true, data: formattedClasses } };
+            return {
+                status: 200,
+                jsonBody: { success: true, data: formattedClasses }
+            };
+            
         } catch (error) {
             context.error('GetSchedule error:', error);
             return { status: 500, jsonBody: { success: false, message: 'Error al obtener horario' } };

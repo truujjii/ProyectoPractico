@@ -5,7 +5,6 @@ const bcrypt = require('bcryptjs');
 app.http('register', {
     methods: ['POST'],
     authLevel: 'anonymous',
-    route: 'auth/register',
     handler: async (request, context) => {
         context.log('Register function triggered');
         
@@ -13,7 +12,7 @@ app.http('register', {
             const body = await request.json();
             const { email, password, firstName, lastName } = body;
             
-            // Validación
+                        // Validación
             if (!email || !password) {
                 return {
                     status: 400,
@@ -36,10 +35,10 @@ app.http('register', {
             
             // Verificar si el usuario ya existe
             const { data: existingUser } = await supabase
-                .from('users')
+                .from('Users')
                 .select('*')
-                .eq('email', email)
-                .maybeSingle();
+                .eq('Email', email)
+                .single();
             
             if (existingUser) {
                 return {
@@ -56,32 +55,19 @@ app.http('register', {
             
             // Insertar usuario
             const { data: newUser, error } = await supabase
-                .from('users')
+                .from('Users')
                 .insert([{
-                    email: email,
-                    passwordhash: passwordHash,
-                    firstname: firstName || null,
-                    lastname: lastName || null
+                    Email: email,
+                    PasswordHash: passwordHash,
+                    FirstName: firstName || null,
+                    LastName: lastName || null
                 }])
                 .select()
                 .single();
             
             if (error) {
-                context.error('Database error:', error);
                 throw error;
             }
-            
-            return {
-                status: 201,
-                jsonBody: {
-                    success: true,
-                    data: {
-                        userId: newUser.userid,
-                        email: newUser.email
-                    },
-                    message: 'Usuario registrado exitosamente'
-                }
-            };
             
         } catch (error) {
             context.error('Register error:', error);

@@ -1,163 +1,60 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
-// Función para detectar intención y generar respuesta
-function detectIntent(message, scheduleData, tasksData) {
+function detectIntent(message) {
     const msg = message.toLowerCase();
     
-    // Saludos
-    if (msg.match(/hola|buenos|hey|hi/)) {
-        return '¡Hola! 👋 Soy tu asistente académico. Puedo ayudarte con:\n\n' +
-               '📅 "¿Qué clases tengo hoy?"\n' +
-               '📝 "¿Cuántas tareas tengo pendientes?"\n' +
-               '⏰ "¿Cuál es mi próxima tarea?"\n' +
-               '📚 "¿Qué tengo mañana?"';
+    if (msg.includes('hoy') && (msg.includes('clase') || msg.includes('horario'))) {
+        return 'clases_hoy';
+    }
+    if (msg.includes('mañana') && (msg.includes('clase') || msg.includes('horario'))) {
+        return 'clases_manana';
+    }
+    if (msg.includes('tarea') && (msg.includes('pendiente') || msg.includes('por hacer'))) {
+        return 'tareas_pendientes';
+    }
+    if (msg.includes('próxima tarea') || msg.includes('siguiente tarea')) {
+        return 'proxima_tarea';
+    }
+    if (msg.includes('ayuda') || msg.includes('ayudame')) {
+        return 'ayuda';
     }
     
-    // Clases de hoy
-    if (msg.match(/clases? (de )?hoy|horario (de )?hoy|tengo hoy/)) {
-        const today = new Date().getDay();
-        const todayClasses = scheduleData.filter(c => c.dayOfWeek === today);
-        
-        if (todayClasses.length === 0) {
-            return '🎉 ¡No tienes clases hoy! Aprovecha para descansar o ponerte al día con tareas.';
-        }
-        
-        let response = `📅 Hoy tienes ${todayClasses.length} clase(s):\n\n`;
-        todayClasses.forEach(c => {
-            response += `🎓 ${c.subjectName}\n`;
-            response += `   ⏰ ${c.startTime} - ${c.endTime}\n`;
-            if (c.location) response += `   📍 ${c.location}\n`;
-            if (c.professor) response += `   👨‍🏫 ${c.professor}\n`;
-            response += '\n';
-        });
-        
-        return response.trim();
-    }
-    
-    // Clases de mañana
-    if (msg.match(/clases? (de )?mañana|horario (de )?mañana|tengo mañana/)) {
-        const tomorrow = (new Date().getDay() + 1) % 7;
-        const tomorrowClasses = scheduleData.filter(c => c.dayOfWeek === tomorrow);
-        
-        if (tomorrowClasses.length === 0) {
-            return '🎉 Mañana no tienes clases programadas.';
-        }
-        
-        let response = `📅 Mañana tienes ${tomorrowClasses.length} clase(s):\n\n`;
-        tomorrowClasses.forEach(c => {
-            response += `🎓 ${c.subjectName}\n`;
-            response += `   ⏰ ${c.startTime} - ${c.endTime}\n`;
-            if (c.location) response += `   📍 ${c.location}\n`;
-            response += '\n';
-        });
-        
-        return response.trim();
-    }
-    
-    // Tareas pendientes
-    if (msg.match(/tareas? pendientes?|cuántas tareas?|tengo que hacer/)) {
-        const pendingTasks = tasksData.filter(t => !t.isCompleted);
-        
-        if (pendingTasks.length === 0) {
-            return '🎉 ¡Genial! No tienes tareas pendientes. Estás al día.';
-        }
-        
-        let response = `📝 Tienes ${pendingTasks.length} tarea(s) pendiente(s):\n\n`;
-        pendingTasks.slice(0, 5).forEach(t => {
-            const dueDate = new Date(t.dueDate);
-            const today = new Date();
-            const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-            
-            let urgency = '';
-            if (daysLeft < 0) urgency = '🔴 ¡Atrasada!';
-            else if (daysLeft === 0) urgency = '🔴 ¡Hoy!';
-            else if (daysLeft === 1) urgency = '🟠 Mañana';
-            else if (daysLeft <= 3) urgency = `🟡 En ${daysLeft} días`;
-            else urgency = `🟢 En ${daysLeft} días`;
-            
-            response += `${t.priority === 'Alta' ? '⚠️ ' : ''}${t.title}\n`;
-            response += `   ${urgency}\n`;
-            if (t.subject) response += `   📚 ${t.subject}\n`;
-            response += '\n';
-        });
-        
-        if (pendingTasks.length > 5) {
-            response += `\n...y ${pendingTasks.length - 5} más.`;
-        }
-        
-        return response.trim();
-    }
-    
-    // Próxima tarea
-    if (msg.match(/próxima tarea|siguiente tarea|qué sigue/)) {
-        const pendingTasks = tasksData
-            .filter(t => !t.isCompleted)
-            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-        
-        if (pendingTasks.length === 0) {
-            return '✅ No tienes tareas pendientes próximas.';
-        }
-        
-        const nextTask = pendingTasks[0];
-        const dueDate = new Date(nextTask.dueDate);
-        const today = new Date();
-        const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        
-        let response = '⏰ Tu próxima tarea es:\n\n';
-        response += `📌 ${nextTask.title}\n`;
-        if (nextTask.description) response += `   📄 ${nextTask.description}\n`;
-        if (nextTask.subject) response += `   📚 ${nextTask.subject}\n`;
-        response += `   📅 Fecha: ${dueDate.toLocaleDateString('es-ES')}\n`;
-        
-        if (daysLeft < 0) response += '   🔴 ¡Está atrasada!\n';
-        else if (daysLeft === 0) response += '   🔴 ¡Vence hoy!\n';
-        else if (daysLeft === 1) response += '   🟠 Vence mañana\n';
-        else response += `   🟢 Faltan ${daysLeft} días\n`;
-        
-        return response.trim();
-    }
-    
-    // Ayuda
-    if (msg.match(/ayuda|help|qué puedes hacer|comandos/)) {
-        return '🤖 Puedo ayudarte con:\n\n' +
-               '📅 Consultar tu horario de hoy o mañana\n' +
-               '📝 Ver tus tareas pendientes\n' +
-               '⏰ Saber cuál es tu próxima tarea\n' +
-               '📊 Obtener estadísticas de tu progreso\n\n' +
-               'Solo pregúntame en lenguaje natural, como:\n' +
-               '• "¿Qué clases tengo hoy?"\n' +
-               '• "¿Cuántas tareas pendientes tengo?"\n' +
-               '• "¿Cuál es mi próxima tarea?"';
-    }
-    
-    // Respuesta por defecto
-    return 'Hmm, no estoy seguro de entender. 🤔\n\n' +
-           'Prueba preguntarme sobre:\n' +
-           '• Tu horario de hoy o mañana\n' +
-           '• Tus tareas pendientes\n' +
-           '• Tu próxima tarea\n\n' +
-           'O escribe "ayuda" para ver qué puedo hacer.';
+    return 'unknown';
 }
 
-app.http('chatbotQuery', {
+function getDayOfWeek() {
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const today = new Date().getDay();
+    return { today: today, tomorrow: (today + 1) % 7, todayName: days[today] };
+}
+
+function formatTime(time) {
+    return time.substring(0, 5); // HH:MM:SS -> HH:MM
+}
+
+function getDaysUntilDue(dueDate) {
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diff = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+    
+    if (diff < 0) return 'Atrasada ⚠️';
+    if (diff === 0) return 'Hoy ⏰';
+    if (diff === 1) return 'Mañana 📅';
+    return `En ${diff} días`;
+}
+
+app.http('query', {
     methods: ['POST'],
     authLevel: 'anonymous',
     route: 'chatbot/query',
@@ -168,8 +65,8 @@ app.http('chatbotQuery', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
@@ -180,34 +77,138 @@ app.http('chatbotQuery', {
                 return { status: 400, jsonBody: { success: false, message: 'Mensaje requerido' } };
             }
             
-            const pool = await sql.connect(config);
+            const intent = detectIntent(message);
+            const days = getDayOfWeek();
+            let response = '';
             
-            // Obtener horario del usuario
-            const scheduleResult = await pool.request()
-                .input('userId', sql.Int, user.UserID)
-                .query('SELECT * FROM Classes WHERE UserID = @userId ORDER BY DayOfWeek, StartTime');
-            
-            // Obtener tareas del usuario
-            const tasksResult = await pool.request()
-                .input('userId', sql.Int, user.UserID)
-                .query('SELECT * FROM Tasks WHERE UserID = @userId ORDER BY DueDate');
-            
-            await pool.close();
-            
-            // Generar respuesta basada en el mensaje
-            const response = detectIntent(message, scheduleResult.recordset, tasksResult.recordset);
+            switch (intent) {
+                case 'clases_hoy': {
+                    const { data: classes } = await supabase
+                        .from('classes')
+                        .select('*')
+                        .eq('userid', userId)
+                        .eq('dayofweek', days.today)
+                        .order('starttime');
+                    
+                    if (!classes || classes.length === 0) {
+                        response = `📅 No tienes clases hoy (${days.todayName}). ¡Día libre! 🎉`;
+                    } else {
+                        response = `📅 Tienes ${classes.length} clase(s) hoy (${days.todayName}):\n\n`;
+                        classes.forEach(c => {
+                            response += `• ${c.subjectname}\n  ${formatTime(c.starttime)} - ${formatTime(c.endtime)}\n`;
+                            if (c.location) response += `  📍 ${c.location}\n`;
+                            if (c.professor) response += `  👨‍🏫 ${c.professor}\n`;
+                            response += '\n';
+                        });
+                    }
+                    break;
+                }
+                
+                case 'clases_manana': {
+                    const { data: classes } = await supabase
+                        .from('classes')
+                        .select('*')
+                        .eq('userid', userId)
+                        .eq('dayofweek', days.tomorrow)
+                        .order('starttime');
+                    
+                    if (!classes || classes.length === 0) {
+                        response = '📅 No tienes clases mañana. ¡Aprovecha el día! 😊';
+                    } else {
+                        response = `📅 Tienes ${classes.length} clase(s) mañana:\n\n`;
+                        classes.forEach(c => {
+                            response += `• ${c.subjectname}\n  ${formatTime(c.starttime)} - ${formatTime(c.endtime)}\n`;
+                            if (c.location) response += `  📍 ${c.location}\n`;
+                            if (c.professor) response += `  👨‍🏫 ${c.professor}\n`;
+                            response += '\n';
+                        });
+                    }
+                    break;
+                }
+                
+                case 'tareas_pendientes': {
+                    const { data: tasks } = await supabase
+                        .from('tasks')
+                        .select('*')
+                        .eq('userid', userId)
+                        .eq('iscompleted', false)
+                        .order('duedate')
+                        .limit(5);
+                    
+                    if (!tasks || tasks.length === 0) {
+                        response = '✅ ¡Genial! No tienes tareas pendientes. 🎉';
+                    } else {
+                        const { data: allTasks } = await supabase
+                            .from('tasks')
+                            .select('taskid')
+                            .eq('userid', userId)
+                            .eq('iscompleted', false);
+                        
+                        const total = allTasks ? allTasks.length : 0;
+                        response = `📝 Tienes ${total} tarea(s) pendiente(s).\n\nPróximas 5:\n\n`;
+                        
+                        tasks.forEach(t => {
+                            response += `• ${t.title}\n`;
+                            if (t.subject) response += `  📚 ${t.subject}\n`;
+                            response += `  📅 ${getDaysUntilDue(t.duedate)}\n`;
+                            if (t.priority === 'Alta') response += `  🔴 Prioridad Alta\n`;
+                            response += '\n';
+                        });
+                    }
+                    break;
+                }
+                
+                case 'proxima_tarea': {
+                    const { data: task } = await supabase
+                        .from('tasks')
+                        .select('*')
+                        .eq('userid', userId)
+                        .eq('iscompleted', false)
+                        .order('duedate')
+                        .limit(1)
+                        .single();
+                    
+                    if (!task) {
+                        response = '✅ No tienes tareas pendientes. ¡Buen trabajo! 🎊';
+                    } else {
+                        response = `📝 Tu próxima tarea es:\n\n`;
+                        response += `• ${task.title}\n`;
+                        if (task.description) response += `  ${task.description}\n`;
+                        if (task.subject) response += `  📚 ${task.subject}\n`;
+                        response += `  📅 ${getDaysUntilDue(task.duedate)}\n`;
+                        if (task.priority === 'Alta') response += `  🔴 Prioridad Alta\n`;
+                    }
+                    break;
+                }
+                
+                case 'ayuda': {
+                    response = `🤖 ¡Hola! Soy tu asistente Smart UNI-BOT.\n\nPuedo ayudarte con:\n\n`;
+                    response += `📅 "¿Qué clases tengo hoy?" - Tu horario de hoy\n`;
+                    response += `📅 "¿Qué clases tengo mañana?" - Tu horario de mañana\n`;
+                    response += `📝 "¿Cuántas tareas pendientes tengo?" - Lista de tareas\n`;
+                    response += `📝 "¿Cuál es mi próxima tarea?" - Siguiente tarea por hacer\n\n`;
+                    response += `¡Pregúntame lo que necesites! 😊`;
+                    break;
+                }
+                
+                default: {
+                    response = `🤔 No entiendo tu pregunta.\n\nIntenta preguntarme:\n`;
+                    response += `• "¿Qué clases tengo hoy?"\n`;
+                    response += `• "¿Cuántas tareas pendientes tengo?"\n`;
+                    response += `• "Ayuda" para ver todas las opciones`;
+                }
+            }
             
             return {
                 status: 200,
-                jsonBody: {
-                    success: true,
-                    data: { response }
-                }
+                jsonBody: { success: true, data: { response } }
             };
-            
         } catch (error) {
-            context.error('ChatbotQuery error:', error);
-            return { status: 500, jsonBody: { success: false, message: 'Error en el chatbot' } };
+            context.error('Chatbot Query error:', error);
+            return {
+                status: 500,
+                jsonBody: { success: false, message: 'Error en el chatbot' }
+            };
         }
     }
 });

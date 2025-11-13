@@ -1,21 +1,14 @@
 const { app } = require('@azure/functions');
-const sql = require('mssql');
-
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    options: { encrypt: true, trustServerCertificate: false }
-};
+const { supabase } = require('../supabaseClient');
 
 async function validateSession(sessionId) {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-        .input('sessionId', sql.NVarChar, sessionId)
-        .query('SELECT UserID FROM Sessions WHERE SessionID = @sessionId AND ExpiresAt > GETDATE()');
-    await pool.close();
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    const { data: session } = await supabase
+        .from('sessions')
+        .select('userid')
+        .eq('sessionid', sessionId)
+        .gt('expiresat', new Date().toISOString())
+        .single();
+    return session ? session.userid : null;
 }
 
 app.http('updateTask', {
@@ -29,8 +22,8 @@ app.http('updateTask', {
                 return { status: 401, jsonBody: { success: false, message: 'No autenticado' } };
             }
             
-            const user = await validateSession(sessionId);
-            if (!user) {
+            const userId = await validateSession(sessionId);
+            if (!userId) {
                 return { status: 401, jsonBody: { success: false, message: 'Sesión inválida' } };
             }
             
@@ -41,64 +34,45 @@ app.http('updateTask', {
                 return { status: 400, jsonBody: { success: false, message: 'TaskID requerido' } };
             }
             
-            const pool = await sql.connect(config);
+            // Verificar propiedad
+            const { data: existingTask } = await supabase
+                .from('tasks')
+                .select('taskid')
+                .eq('taskid', taskId)
+                .eq('userid', userId)
+                .single();
             
-            // Verificar que la tarea pertenece al usuario
-            const checkResult = await pool.request()
-                .input('taskId', sql.Int, taskId)
-                .input('userId', sql.Int, user.UserID)
-                .query('SELECT TaskID FROM Tasks WHERE TaskID = @taskId AND UserID = @userId');
-            
-            if (checkResult.recordset.length === 0) {
-                await pool.close();
+            if (!existingTask) {
                 return { status: 404, jsonBody: { success: false, message: 'Tarea no encontrada' } };
             }
             
-            // Construir query de actualización
-            let updateQuery = 'UPDATE Tasks SET ';
-            const updates = [];
-            const req = pool.request().input('taskId', sql.Int, taskId).input('userId', sql.Int, user.UserID);
+            // Construir update
+            const updates = {};
+            if (title) updates.title = title;
+            if (description !== undefined) updates.description = description;
+            if (subject !== undefined) updates.subject = subject;
+            if (dueDate) updates.duedate = dueDate;
+            if (priority) updates.priority = priority;
             
-            if (title) {
-                updates.push('Title = @title');
-                req.input('title', sql.NVarChar, title);
-            }
-            if (description !== undefined) {
-                updates.push('Description = @description');
-                req.input('description', sql.NVarChar, description);
-            }
-            if (subject !== undefined) {
-                updates.push('Subject = @subject');
-                req.input('subject', sql.NVarChar, subject);
-            }
-            if (dueDate) {
-                updates.push('DueDate = @dueDate');
-                req.input('dueDate', sql.Date, dueDate);
-            }
-            if (priority) {
-                updates.push('Priority = @priority');
-                req.input('priority', sql.NVarChar, priority);
-            }
+            // Lógica especial para isCompleted
             if (isCompleted !== undefined) {
-                updates.push('IsCompleted = @isCompleted');
-                req.input('isCompleted', sql.Bit, isCompleted);
-                
+                updates.iscompleted = isCompleted;
                 if (isCompleted) {
-                    updates.push('CompletedAt = GETDATE()');
+                    updates.completedat = new Date().toISOString();
                 } else {
-                    updates.push('CompletedAt = NULL');
+                    updates.completedat = null;
                 }
             }
             
-            updateQuery += updates.join(', ') + ' WHERE TaskID = @taskId AND UserID = @userId';
+            const { error } = await supabase
+                .from('tasks')
+                .update(updates)
+                .eq('taskid', taskId)
+                .eq('userid', userId);
             
-            await req.query(updateQuery);
-            await pool.close();
+            if (error) throw error;
             
-            return {
-                status: 200,
-                jsonBody: { success: true, message: 'Tarea actualizada' }
-            };
+            return { status: 200, jsonBody: { success: true, message: 'Tarea actualizada' } };
         } catch (error) {
             context.error('UpdateTask error:', error);
             return { status: 500, jsonBody: { success: false, message: 'Error al actualizar tarea' } };
