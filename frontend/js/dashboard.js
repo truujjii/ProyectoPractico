@@ -17,7 +17,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Mostrar información del usuario
-    const userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email;
+    const userName = user.user_metadata?.first_name 
+        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim() 
+        : user.email.split('@')[0];
     document.getElementById('user-info').textContent = `👤 ${userName}`;
     
     // Cargar datos
@@ -50,7 +52,18 @@ async function loadSchedule() {
     try {
         const response = await getSchedule();
         if (response.success) {
-            currentSchedule = response.data;
+            // Convertir snake_case a camelCase para compatibilidad con el resto del código
+            currentSchedule = (response.data.classes || []).map(c => ({
+                classId: c.id,
+                subjectName: c.subject_name,
+                dayOfWeek: c.day_of_week,
+                startTime: c.start_time,
+                endTime: c.end_time,
+                location: c.location,
+                professor: c.professor,
+                semesterYear: c.semester_year,
+                semesterPeriod: c.semester_period
+            }));
             renderScheduleGrid();
         }
     } catch (error) {
@@ -118,7 +131,17 @@ async function loadTasks() {
     try {
         const response = await getTasks(currentFilter);
         if (response.success) {
-            currentTasks = response.data;
+            // Convertir snake_case a camelCase
+            currentTasks = (response.data.tasks || []).map(t => ({
+                taskId: t.id,
+                title: t.title,
+                description: t.description,
+                subject: t.subject,
+                dueDate: t.due_date,
+                priority: t.priority,
+                isCompleted: t.is_completed,
+                completedAt: t.completed_at
+            }));
             renderTasksList();
         }
     } catch (error) {
@@ -291,8 +314,7 @@ async function saveClass(event) {
         let response;
         
         if (editingClassId) {
-            classData.classId = editingClassId;
-            response = await updateClass(classData);
+            response = await updateClass(editingClassId, classData);
         } else {
             response = await createClass(classData);
         }
@@ -408,8 +430,7 @@ async function saveTask(event) {
         let response;
         
         if (editingTaskId) {
-            taskData.taskId = editingTaskId;
-            response = await updateTask(taskData);
+            response = await updateTask(editingTaskId, taskData);
         } else {
             response = await createTask(taskData);
         }
