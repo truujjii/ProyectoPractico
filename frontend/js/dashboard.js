@@ -32,18 +32,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Verificar si el usuario es admin
 async function checkAdminAccess(userId) {
     try {
+        console.log('Checking admin access for user:', userId);
+        
         const { data, error } = await supabaseClient
             .from('user_roles')
             .select('role')
             .eq('user_id', userId)
             .single();
         
+        console.log('User role data:', data);
+        console.log('User role error:', error);
+        
         if (!error && data && data.role === 'admin') {
-            document.getElementById('admin-btn').style.display = 'inline-block';
+            console.log('User is admin! Showing button...');
+            const adminBtn = document.getElementById('admin-btn');
+            if (adminBtn) {
+                adminBtn.style.display = 'inline-block';
+                console.log('Admin button display set to inline-block');
+            } else {
+                console.error('Admin button not found in DOM!');
+            }
+        } else {
+            console.log('User is not admin or error occurred');
         }
     } catch (error) {
-        console.log('User role check:', error.message);
-        // Silenciosamente ignorar el error, el botón simplemente no se mostrará
+        console.error('User role check error:', error);
     }
 }
 
