@@ -400,8 +400,28 @@ function openTaskModal(taskId = null) {
     const modal = document.getElementById('task-modal');
     const form = document.getElementById('task-form');
     const title = document.getElementById('task-modal-title');
+    const subjectSelect = document.getElementById('task-subject');
     
     form.reset();
+    
+    // Llenar desplegable con asignaturas del horario
+    subjectSelect.innerHTML = '<option value="">Selecciona una asignatura...</option>';
+    
+    // Obtener asignaturas únicas del horario
+    const subjects = [...new Set(currentSchedule.map(c => c.subjectName))].sort();
+    
+    subjects.forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject;
+        option.textContent = subject;
+        subjectSelect.appendChild(option);
+    });
+    
+    // Agregar opción "Otra" al final
+    const otherOption = document.createElement('option');
+    otherOption.value = 'Otra';
+    otherOption.textContent = '📝 Otra asignatura...';
+    subjectSelect.appendChild(otherOption);
     
     if (taskId) {
         // Modo edición
