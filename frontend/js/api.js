@@ -50,27 +50,62 @@ async function apiFetch(endpoint, options = {}) {
  * Registrar nuevo usuario
  */
 async function register(email, password, firstName = '', lastName = '') {
-    return await apiFetch('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, firstName, lastName })
-    });
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    first_name: firstName,
+                    last_name: lastName
+                }
+            }
+        });
+        
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { user: data.user },
+            message: 'Usuario registrado exitosamente'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message || 'Error al registrar usuario'
+        };
+    }
 }
 
 /**
  * Iniciar sesión
  */
 async function login(email, password) {
-    const response = await apiFetch('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-    });
-    
-    if (response.success && response.data.sessionId) {
-        localStorage.setItem('sessionId', response.data.sessionId);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (error) throw error;
+        
+        localStorage.setItem('sessionId', data.session.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        return {
+            success: true,
+            data: {
+                sessionId: data.session.access_token,
+                user: data.user
+            },
+            message: 'Login exitoso'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message || 'Error al iniciar sesión'
+        };
     }
-    
-    return response;
 }
 
 /**
@@ -78,9 +113,7 @@ async function login(email, password) {
  */
 async function logout() {
     try {
-        await apiFetch('/auth/logout', {
-            method: 'POST'
-        });
+        await supabaseClient.auth.signOut();
     } catch (error) {
         console.error('Logout error:', error);
     } finally {
