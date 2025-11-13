@@ -24,7 +24,7 @@ async function loadUsers() {
     showLoading();
     
     try {
-        const { data, error } = await supabaseClient.auth.admin.listUsers();
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers();
         
         if (error) throw error;
         
@@ -155,7 +155,7 @@ async function confirmUserEmail(userId, userEmail) {
     try {
         showLoading();
         
-        const { error } = await supabaseClient.auth.admin.updateUserById(
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
             userId,
             { email_confirm: true }
         );
@@ -189,7 +189,7 @@ async function resetUserPassword(userId) {
     try {
         showLoading();
         
-        const { error } = await supabaseClient.auth.admin.updateUserById(
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
             userId,
             { password: newPassword }
         );
@@ -214,7 +214,7 @@ async function deleteUser(userId, userEmail) {
     try {
         showLoading();
         
-        const { error } = await supabaseClient.auth.admin.deleteUser(userId);
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
         
         if (error) throw error;
         
