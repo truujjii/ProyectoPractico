@@ -94,6 +94,17 @@ a:hover {
 }
 
 .btn-primary {
+    display: inline-block;
+    padding: 14px 28px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: center;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    font-family: inherit;
     background: var(--uab-green-primary);
     color: var(--uab-white);
     box-shadow: var(--shadow-md);
@@ -111,9 +122,19 @@ a:hover {
 }
 
 .btn-secondary {
+    display: inline-block;
+    padding: 14px 28px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid var(--uab-green-primary);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    font-family: inherit;
     background: var(--uab-white);
     color: var(--uab-green-primary);
-    border: 2px solid var(--uab-green-primary);
 }
 
 .btn-secondary:hover {
@@ -124,6 +145,17 @@ a:hover {
 }
 
 .btn-danger {
+    display: inline-block;
+    padding: 14px 28px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: center;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    font-family: inherit;
     background: var(--uab-error);
     color: var(--uab-white);
 }
