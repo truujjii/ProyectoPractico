@@ -92,8 +92,10 @@ async function register(email, password, firstName = '', lastName = '') {
         
         // Auto-login después del registro
         if (data.session) {
+            // Por defecto los nuevos usuarios son 'user'
             localStorage.setItem('sessionId', data.session.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('userRole', 'user');
         }
         
         return {
@@ -121,8 +123,18 @@ async function login(email, password) {
         
         if (error) throw error;
         
+        // Obtener el rol del usuario
+        const { data: roleData } = await supabaseClient
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .single();
+        
+        const userRole = roleData?.role || 'user';
+        
         localStorage.setItem('sessionId', data.session.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('userRole', userRole);
         
         return {
             success: true,

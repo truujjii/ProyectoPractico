@@ -22,43 +22,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         : user.email.split('@')[0];
     document.getElementById('user-info').textContent = `👤 ${userName}`;
     
-    // Verificar si es admin para mostrar botón
-    await checkAdminAccess(user.id);
+    // Verificar si es admin - SIMPLE: solo revisar localStorage
+    const userRole = localStorage.getItem('userRole');
+    console.log('User role from localStorage:', userRole);
+    
+    if (userRole === 'admin') {
+        console.log('User is admin! Showing button...');
+        const adminBtn = document.getElementById('admin-btn');
+        if (adminBtn) {
+            adminBtn.style.display = 'inline-block';
+            console.log('Admin button shown');
+        }
+    }
     
     // Cargar datos
     await loadDashboard();
 });
-
-// Verificar si el usuario es admin
-async function checkAdminAccess(userId) {
-    try {
-        console.log('Checking admin access for user:', userId);
-        
-        const { data, error } = await supabaseClient
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', userId)
-            .single();
-        
-        console.log('User role data:', data);
-        console.log('User role error:', error);
-        
-        if (!error && data && data.role === 'admin') {
-            console.log('User is admin! Showing button...');
-            const adminBtn = document.getElementById('admin-btn');
-            if (adminBtn) {
-                adminBtn.style.display = 'inline-block';
-                console.log('Admin button display set to inline-block');
-            } else {
-                console.error('Admin button not found in DOM!');
-            }
-        } else {
-            console.log('User is not admin or error occurred');
-        }
-    } catch (error) {
-        console.error('User role check error:', error);
-    }
-}
 
 // Cargar todo el dashboard
 async function loadDashboard() {

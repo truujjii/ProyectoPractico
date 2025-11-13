@@ -3,50 +3,29 @@
    ============================================ */
 
 let allUsers = [];
-let currentUserRole = null;
 
 // Inicializar página
 document.addEventListener('DOMContentLoaded', async () => {
     // Verificar autenticación
     const sessionId = localStorage.getItem('sessionId');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const userRole = localStorage.getItem('userRole');
     
     if (!sessionId || !user) {
         window.location.href = 'index.html';
         return;
     }
     
-    // Verificar que el usuario es admin
-    await checkAdminRole(user.id);
+    // Verificar que el usuario es admin - SIMPLE
+    if (userRole !== 'admin') {
+        alert('⛔ No tienes permisos para acceder a esta página');
+        window.location.href = 'dashboard.html';
+        return;
+    }
     
     // Cargar usuarios
     await loadUsers();
 });
-
-// Verificar si el usuario actual es admin
-async function checkAdminRole(userId) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', userId)
-            .single();
-        
-        if (error) throw error;
-        
-        currentUserRole = data.role;
-        
-        if (currentUserRole !== 'admin') {
-            alert('⛔ No tienes permisos para acceder a esta página');
-            window.location.href = 'dashboard.html';
-            return;
-        }
-    } catch (error) {
-        console.error('Error checking role:', error);
-        alert('⛔ Error al verificar permisos. Redirigiendo al dashboard...');
-        window.location.href = 'dashboard.html';
-    }
-}
 
 // Cargar todos los usuarios
 async function loadUsers() {
