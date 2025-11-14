@@ -112,7 +112,8 @@ function generateResponse(questionType) {
 
 // Respuesta: próxima clase
 function getNextClassResponse() {
-    const today = new Date().getDay();
+    const jsDay = new Date().getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const today = jsDay === 0 ? 7 : jsDay; // Convertir a 1=Lunes, ..., 7=Domingo
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
@@ -127,7 +128,7 @@ function getNextClassResponse() {
     }
     
     // Si no hay más clases hoy, buscar mañana
-    const tomorrow = today === 6 ? 0 : today + 1;
+    const tomorrow = today === 7 ? 1 : today + 1; // Si hoy es domingo (7), mañana es lunes (1)
     const tomorrowClasses = currentSchedule
         .filter(c => c.dayOfWeek === tomorrow)
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -166,7 +167,8 @@ function getPendingTasksResponse() {
 
 // Respuesta: clases de hoy
 function getTodayClassesResponse() {
-    const today = new Date().getDay();
+    const jsDay = new Date().getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const today = jsDay === 0 ? 7 : jsDay; // Convertir a 1=Lunes, ..., 7=Domingo
     const todayClasses = currentSchedule
         .filter(c => c.dayOfWeek === today)
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -175,8 +177,8 @@ function getTodayClassesResponse() {
         return '🎉 ¡No tienes clases hoy! Día libre para estudiar o descansar.';
     }
     
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    let response = `📅 Clases de ${dayNames[today]}:\n\n`;
+    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    let response = `📅 Clases de ${dayNames[today - 1]}:\n\n`;
     
     todayClasses.forEach((clase, index) => {
         response += `${index + 1}. ${clase.subjectName}\n`;
@@ -194,7 +196,7 @@ function getFullScheduleResponse() {
         return '📊 No tienes clases programadas en tu horario.';
     }
     
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     let response = '📊 Tu horario completo:\n\n';
     
     // Agrupar por día
@@ -204,9 +206,9 @@ function getFullScheduleResponse() {
         byDay[clase.dayOfWeek].push(clase);
     });
     
-    // Mostrar cada día
-    Object.keys(byDay).sort().forEach(day => {
-        response += `📅 ${dayNames[day]}:\n`;
+    // Mostrar cada día (ordenados 1-7: Lunes-Domingo)
+    Object.keys(byDay).sort((a, b) => parseInt(a) - parseInt(b)).forEach(day => {
+        response += `📅 ${dayNames[day - 1]}:\n`;
         byDay[day]
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .forEach(clase => {

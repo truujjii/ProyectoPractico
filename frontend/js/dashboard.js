@@ -94,14 +94,15 @@ function renderScheduleGrid() {
         return;
     }
     
-    // Días de la semana
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    // Días de la semana (Lunes a Domingo)
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     
     let html = '';
     
-    // Crear columnas para cada día
+    // Crear columnas para cada día (1=Lunes, 7=Domingo)
     days.forEach((day, index) => {
-        const dayClasses = currentSchedule.filter(c => c.dayOfWeek === index);
+        const dayNumber = index + 1; // 1=Lunes, 2=Martes, ..., 7=Domingo
+        const dayClasses = currentSchedule.filter(c => c.dayOfWeek === dayNumber);
         
         html += `
             <div class="day-column">
@@ -217,7 +218,8 @@ function renderTasksList() {
 function renderQuickView() {
     // Próxima clase
     const nextClassCard = document.getElementById('next-class-card').querySelector('.quick-content');
-    const today = new Date().getDay();
+    const jsDay = new Date().getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const today = jsDay === 0 ? 7 : jsDay; // Convertir a 1=Lunes, ..., 7=Domingo
     const todayClasses = currentSchedule.filter(c => c.dayOfWeek === today);
     
     if (todayClasses.length > 0) {
