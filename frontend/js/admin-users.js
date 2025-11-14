@@ -127,50 +127,6 @@ function renderUsersTable() {
                 </td>
             </tr>
         `;
-        const createdAt = new Date(user.created_at).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
-        const lastSignIn = user.last_sign_in_at 
-            ? new Date(user.last_sign_in_at).toLocaleDateString('es-ES', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            })
-            : 'Nunca';
-        const roleClass = user.role === 'admin' ? 'confirmed' : 'active';
-        const roleIcon = user.role === 'admin' ? '👑' : '👤';
-        
-        html += `
-            <tr>
-                <td>
-                    <div class="user-info-cell">
-                        <span class="user-email">${escapeHtml(user.email || 'Sin email')}</span>
-                        <span class="user-date">ID: ${user.id.substring(0, 8)}...</span>
-                    </div>
-                </td>
-                <td>
-                    <span class="user-status status-${roleClass}">${roleIcon} ${user.role}</span>
-                </td>
-                <td>${createdAt}</td>
-                <td>${lastSignIn}</td>
-                <td style="text-align: center;">
-                    <div class="user-actions">
-                        ${user.role !== 'admin' ? `
-                            <button class="btn-icon view" onclick="promoteToAdmin('${user.id}', '${escapeHtml(user.email)}')" title="Promover a Admin">
-                                👑
-                            </button>
-                            <button class="btn-icon delete" onclick="deleteUserRole('${user.id}', '${escapeHtml(user.email)}')" title="Eliminar usuario">
-                                🗑️
-                            </button>
-                        ` : `
-                            <span style="color: var(--uab-text-light); font-size: 0.85rem; font-weight: 500;">Admin</span>
-                        `}
-                    </div>
-                </td>
-            </tr>
-        `;
     });
     
     html += `
@@ -182,8 +138,10 @@ function renderUsersTable() {
 }
 
 // Promover usuario a admin
-async function promoteToAdmin(userId, userEmail) {
-    if (!confirm(`¿Promover a ${userEmail} a administrador?\n\nTendrá acceso completo al panel de administración.`)) {
+async function promoteToAdmin(userId) {
+    const userEmail = allUsers.find(u => u.id === userId)?.email || 'este usuario';
+    
+    if (!confirm(`¿Promover a ${userEmail} a administrador?\n\nTendrá acceso al panel de administración.`)) {
         return;
     }
     
@@ -197,7 +155,7 @@ async function promoteToAdmin(userId, userEmail) {
         
         if (error) throw error;
         
-        showNotification('Usuario promovido a administrador', 'success');
+        showNotification('✅ Usuario promovido a administrador. Debe cerrar sesión y volver a entrar para ver los cambios.', 'success');
         await loadUsers();
     } catch (error) {
         console.error('Error promoting user:', error);
@@ -208,7 +166,9 @@ async function promoteToAdmin(userId, userEmail) {
 }
 
 // Eliminar usuario
-async function deleteUserRole(userId, userEmail) {
+async function deleteUserRole(userId) {
+    const userEmail = allUsers.find(u => u.id === userId)?.email || 'este usuario';
+    
     if (!confirm(`⚠️ ¿Estás seguro de eliminar al usuario ${userEmail}?\n\nSe eliminarán todos sus datos (clases, tareas, etc.)`)) {
         return;
     }
