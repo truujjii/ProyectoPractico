@@ -1,8 +1,10 @@
 // Estado global
 let messageHistory = [];
+let currentSchedule = [];
+let currentTasks = [];
 
 // Inicializar chatbot
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Verificar autenticación
     const sessionId = localStorage.getItem('sessionId');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -11,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'index.html';
         return;
     }
+    
+    // Cargar datos del usuario
+    await loadUserData();
     
     // Cargar historial de mensajes del sessionStorage
     const savedHistory = sessionStorage.getItem('chatHistory');
@@ -23,12 +28,236 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Focus en input
-    document.getElementById('message-input').focus();
-    
     // Scroll al final
     scrollToBottom();
 });
+
+// Cargar datos del usuario
+async function loadUserData() {
+    try {
+        // Cargar horario
+        const scheduleResponse = await getSchedule();
+        if (scheduleResponse.success) {
+            currentSchedule = (scheduleResponse.data.classes || []).map(c => ({
+                classId: c.id,
+                subjectName: c.subject_name,
+                dayOfWeek: c.day_of_week,
+                startTime: c.start_time,
+                endTime: c.end_time,
+                location: c.location,
+                professor: c.professor
+            }));
+        }
+        
+        // Cargar tareas
+        const tasksResponse = await getTasks();
+        if (tasksResponse.success) {
+            currentTasks = (tasksResponse.data.tasks || []).map(t => ({
+                taskId: t.id,
+                title: t.title,
+                description: t.description,
+                subject: t.subject,
+                dueDate: t.due_date,
+                priority: t.priority,
+                isCompleted: t.is_completed
+            }));
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+    }
+}
+
+// Manejar pregunta predefinida
+async function handleQuestion(questionType) {
+    // Mostrar pregunta del usuario
+    const questions = {
+        'proxima-clase': '¿Cuándo es mi próxima clase?',
+        'tareas-pendientes': '¿Qué tareas tengo pendientes?',
+        'clases-hoy': '¿Qué clases tengo hoy?',
+        'horario-completo': 'Ver mi horario completo',
+        'tareas-completadas': '¿Cuántas tareas he completado?'
+    };
+    
+    addMessage(questions[questionType], true);
+    
+    // Mostrar indicador de escritura
+    const typingIndicator = showTypingIndicator();
+    
+    // Simular delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Remover indicador
+    typingIndicator.remove();
+    
+    // Generar respuesta
+    const response = generateResponse(questionType);
+    addMessage(response, false);
+}
+
+// Generar respuesta basada en datos reales
+function generateResponse(questionType) {
+    switch (questionType) {
+        case 'proxima-clase':
+            return getNextClassResponse();
+        
+        case 'tareas-pendientes':
+            return getPendingTasksResponse();
+        
+        case 'clases-hoy':
+            return getTodayClassesResponse();
+        
+        case 'horario-completo':
+            return getFullScheduleResponse();
+        
+        case 'tareas-completadas':
+            return getCompletedTasksResponse();
+        
+        default:
+            return 'Lo siento, no entendí tu pregunta. 😕';
+    }
+}
+
+// Respuesta: próxima clase
+function getNextClassResponse() {
+    const today = new Date().getDay();
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    // Buscar clases de hoy que aún no han empezado
+    const todayClasses = currentSchedule
+        .filter(c => c.dayOfWeek === today && c.startTime > currentTime)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    if (todayClasses.length > 0) {
+        const nextClass = todayClasses[0];
+        return `📚 Tu próxima clase es:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
+    }
+    
+    // Si no hay más clases hoy, buscar mañana
+    const tomorrow = today === 6 ? 0 : today + 1;
+    const tomorrowClasses = currentSchedule
+        .filter(c => c.dayOfWeek === tomorrow)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    if (tomorrowClasses.length > 0) {
+        const nextClass = tomorrowClasses[0];
+        return `📚 No tienes más clases hoy.\n\nTu próxima clase es mañana:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
+    }
+    
+    return '📚 No tienes clases programadas próximamente.';
+}
+
+// Respuesta: tareas pendientes
+function getPendingTasksResponse() {
+    const pendingTasks = currentTasks.filter(t => !t.isCompleted);
+    
+    if (pendingTasks.length === 0) {
+        return '🎉 ¡Genial! No tienes tareas pendientes.';
+    }
+    
+    let response = `📝 Tienes ${pendingTasks.length} tarea${pendingTasks.length !== 1 ? 's' : ''} pendiente${pendingTasks.length !== 1 ? 's' : ''}:\n\n`;
+    
+    pendingTasks.slice(0, 5).forEach((task, index) => {
+        response += `${index + 1}. ${task.title}\n`;
+        if (task.subject) response += `   📚 ${task.subject}\n`;
+        if (task.dueDate) response += `   📅 ${formatDate(task.dueDate)}\n`;
+        response += '\n';
+    });
+    
+    if (pendingTasks.length > 5) {
+        response += `... y ${pendingTasks.length - 5} más.`;
+    }
+    
+    return response.trim();
+}
+
+// Respuesta: clases de hoy
+function getTodayClassesResponse() {
+    const today = new Date().getDay();
+    const todayClasses = currentSchedule
+        .filter(c => c.dayOfWeek === today)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    if (todayClasses.length === 0) {
+        return '🎉 ¡No tienes clases hoy! Día libre para estudiar o descansar.';
+    }
+    
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    let response = `📅 Clases de ${dayNames[today]}:\n\n`;
+    
+    todayClasses.forEach((clase, index) => {
+        response += `${index + 1}. ${clase.subjectName}\n`;
+        response += `   ⏰ ${clase.startTime} - ${clase.endTime}\n`;
+        response += `   📍 ${clase.location}\n`;
+        response += `   👨‍🏫 ${clase.professor}\n\n`;
+    });
+    
+    return response.trim();
+}
+
+// Respuesta: horario completo
+function getFullScheduleResponse() {
+    if (currentSchedule.length === 0) {
+        return '📊 No tienes clases programadas en tu horario.';
+    }
+    
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    let response = '📊 Tu horario completo:\n\n';
+    
+    // Agrupar por día
+    const byDay = {};
+    currentSchedule.forEach(clase => {
+        if (!byDay[clase.dayOfWeek]) byDay[clase.dayOfWeek] = [];
+        byDay[clase.dayOfWeek].push(clase);
+    });
+    
+    // Mostrar cada día
+    Object.keys(byDay).sort().forEach(day => {
+        response += `📅 ${dayNames[day]}:\n`;
+        byDay[day]
+            .sort((a, b) => a.startTime.localeCompare(b.startTime))
+            .forEach(clase => {
+                response += `  • ${clase.subjectName} (${clase.startTime}-${clase.endTime})\n`;
+            });
+        response += '\n';
+    });
+    
+    return response.trim();
+}
+
+// Respuesta: tareas completadas
+function getCompletedTasksResponse() {
+    const completedTasks = currentTasks.filter(t => t.isCompleted);
+    const totalTasks = currentTasks.length;
+    
+    if (totalTasks === 0) {
+        return '📝 Aún no tienes tareas registradas.';
+    }
+    
+    const percentage = Math.round((completedTasks.length / totalTasks) * 100);
+    
+    let response = `✅ Has completado ${completedTasks.length} de ${totalTasks} tareas (${percentage}%).\n\n`;
+    
+    if (completedTasks.length > 0) {
+        response += 'Últimas tareas completadas:\n\n';
+        completedTasks.slice(-3).reverse().forEach((task, index) => {
+            response += `${index + 1}. ${task.title}\n`;
+            if (task.subject) response += `   📚 ${task.subject}\n`;
+        });
+    }
+    
+    if (percentage === 100) {
+        response += '\n🎉 ¡Excelente! Has completado todas tus tareas.';
+    } else if (percentage >= 70) {
+        response += '\n👍 ¡Muy buen progreso! Sigue así.';
+    } else if (percentage >= 30) {
+        response += '\n💪 Vas por buen camino, ¡ánimo!';
+    } else {
+        response += '\n🚀 ¡Empieza a tachar esas tareas!';
+    }
+    
+    return response;
+}
 
 // Renderizar todos los mensajes
 function renderMessages() {

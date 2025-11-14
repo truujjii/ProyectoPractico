@@ -22,36 +22,34 @@
                 <div class="bot-avatar">🤖</div>
                 <div class="message-bubble bot-message">
                     <p>¡Hola! 👋 Soy tu asistente académico.</p>
-                    <p>Puedo ayudarte con:</p>
-                    <ul>
-                        <li>📅 Consultar tu horario de hoy o mañana</li>
-                        <li>📝 Ver tus tareas pendientes</li>
-                        <li>⏰ Saber cuál es tu próxima tarea</li>
-                        <li>📊 Estadísticas de tu progreso</li>
-                    </ul>
-                    <p>¡Pregúntame lo que necesites!</p>
+                    <p>Selecciona una de estas opciones para que pueda ayudarte:</p>
                 </div>
             </div>
         </div>
 
-        <!-- Input Area -->
+        <!-- Input Area con botones predefinidos -->
         <div class="input-container">
-            <form id="chat-form" onsubmit="sendMessage(event)">
-                <input 
-                    type="text" 
-                    id="message-input" 
-                    placeholder="Escribe tu pregunta..." 
-                    autocomplete="off"
-                    required
-                >
-                <button type="submit" id="send-button">
-                    <span class="send-icon">📤</span>
+            <div class="predefined-questions">
+                <button class="question-btn" onclick="handleQuestion('proxima-clase')">
+                    <span class="btn-icon">📚</span>
+                    <span class="btn-text">¿Cuándo es mi próxima clase?</span>
                 </button>
-            </form>
-            <div class="quick-questions">
-                <button class="quick-btn" onclick="quickQuestion('¿Qué clases tengo hoy?')">📅 Clases hoy</button>
-                <button class="quick-btn" onclick="quickQuestion('¿Cuántas tareas tengo pendientes?')">📝 Tareas</button>
-                <button class="quick-btn" onclick="quickQuestion('¿Cuál es mi próxima tarea?')">⏰ Próxima</button>
+                <button class="question-btn" onclick="handleQuestion('tareas-pendientes')">
+                    <span class="btn-icon">📝</span>
+                    <span class="btn-text">¿Qué tareas tengo pendientes?</span>
+                </button>
+                <button class="question-btn" onclick="handleQuestion('clases-hoy')">
+                    <span class="btn-icon">📅</span>
+                    <span class="btn-text">¿Qué clases tengo hoy?</span>
+                </button>
+                <button class="question-btn" onclick="handleQuestion('horario-completo')">
+                    <span class="btn-icon">📊</span>
+                    <span class="btn-text">Ver mi horario completo</span>
+                </button>
+                <button class="question-btn" onclick="handleQuestion('tareas-completadas')">
+                    <span class="btn-icon">✅</span>
+                    <span class="btn-text">¿Cuántas tareas he completado?</span>
+                </button>
             </div>
         </div>
     </div>
