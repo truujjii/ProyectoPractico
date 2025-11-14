@@ -112,6 +112,10 @@ function generateResponse(questionType) {
 
 // Respuesta: próxima clase
 function getNextClassResponse() {
+    if (currentSchedule.length === 0) {
+        return '📚 No tienes clases programadas en tu horario.';
+    }
+    
     const jsDay = new Date().getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
     const today = jsDay === 0 ? 7 : jsDay; // Convertir a 1=Lunes, ..., 7=Domingo
     const now = new Date();
@@ -127,15 +131,25 @@ function getNextClassResponse() {
         return `📚 Tu próxima clase es:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
     }
     
-    // Si no hay más clases hoy, buscar mañana
-    const tomorrow = today === 7 ? 1 : today + 1; // Si hoy es domingo (7), mañana es lunes (1)
-    const tomorrowClasses = currentSchedule
-        .filter(c => c.dayOfWeek === tomorrow)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    // Buscar en los próximos días (hasta 7 días después)
+    const dayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     
-    if (tomorrowClasses.length > 0) {
-        const nextClass = tomorrowClasses[0];
-        return `📚 No tienes más clases hoy.\n\nTu próxima clase es mañana:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
+    for (let i = 1; i <= 7; i++) {
+        const nextDay = ((today + i - 1) % 7) + 1; // Rotar días: 1-7
+        const dayClasses = currentSchedule
+            .filter(c => c.dayOfWeek === nextDay)
+            .sort((a, b) => a.startTime.localeCompare(b.startTime));
+        
+        if (dayClasses.length > 0) {
+            const nextClass = dayClasses[0];
+            const dayLabel = i === 1 ? 'mañana' : dayNames[nextDay];
+            
+            if (i === 1) {
+                return `📚 No tienes más clases hoy.\n\nTu próxima clase es mañana:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
+            } else {
+                return `📚 No tienes más clases hoy.\n\nTu próxima clase es el ${dayLabel}:\n\n${nextClass.subjectName}\n⏰ ${nextClass.startTime} - ${nextClass.endTime}\n📍 ${nextClass.location}\n👨‍🏫 ${nextClass.professor}`;
+            }
+        }
     }
     
     return '📚 No tienes clases programadas próximamente.';
