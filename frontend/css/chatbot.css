@@ -8,7 +8,7 @@
 }
 
 .chatbot-header {
-    background: var(--uab-green-dark);
+    background: #0d4d3a;
     color: white;
     padding: 1rem 1.5rem;
     display: flex;
@@ -24,6 +24,8 @@
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .back-button {
