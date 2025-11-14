@@ -124,6 +124,9 @@ function renderUsersTable() {
                     ${canEdit && user.role === 'user' ? `
                         <button class="btn-icon" onclick="promoteToAdmin('${user.id}')" title="Promover a Admin">⬆️</button>
                     ` : ''}
+                    ${currentRole === 'founder' && user.role === 'admin' ? `
+                        <button class="btn-icon" onclick="demoteToUser('${user.id}')" title="Degradar a Usuario">⬇️</button>
+                    ` : ''}
                     ${canEdit && user.role !== 'founder' ? `
                         <button class="btn-icon" onclick="deleteUserRole('${user.id}')" title="Eliminar">🗑️</button>
                     ` : ''}
@@ -164,6 +167,34 @@ async function promoteToAdmin(userId) {
     } catch (error) {
         console.error('Error promoting user:', error);
         showNotification('Error al promover usuario: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Degradar admin a usuario normal
+async function demoteToUser(userId) {
+    const userEmail = allUsers.find(u => u.id === userId)?.email || 'este admin';
+    
+    if (!confirm(`¿Degradar a ${userEmail} a usuario normal?\n\nPerderá acceso al panel de administración.`)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const { error } = await supabaseClient
+            .from('user_roles')
+            .update({ role: 'user' })
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        showNotification('✅ Admin degradado a usuario normal. Debe cerrar sesión para ver los cambios.', 'success');
+        await loadUsers();
+    } catch (error) {
+        console.error('Error demoting user:', error);
+        showNotification('Error al degradar usuario: ' + error.message, 'error');
     } finally {
         hideLoading();
     }
