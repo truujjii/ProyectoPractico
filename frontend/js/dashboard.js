@@ -456,11 +456,20 @@ async function saveTask(event) {
     
     const dueDateValue = document.getElementById('task-due-date').value;
     
+    // Convertir fecha local a ISO UTC
+    let dueDateISO = null;
+    if (dueDateValue) {
+        // dueDateValue es "YYYY-MM-DD"
+        const [year, month, day] = dueDateValue.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59);
+        dueDateISO = date.toISOString();
+    }
+    
     const taskData = {
         title: document.getElementById('task-title').value,
         description: document.getElementById('task-description').value || null,
         subject: document.getElementById('task-subject').value || null,
-        dueDate: dueDateValue ? new Date(dueDateValue + 'T23:59:59').toISOString() : null,
+        dueDate: dueDateISO,
         priority: document.getElementById('task-priority').value
     };
     
