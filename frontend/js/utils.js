@@ -162,18 +162,21 @@ function daysUntil(date) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Extraer solo la parte de la fecha (YYYY-MM-DD) si es un ISO string
-    let dateString = date;
-    if (typeof date === 'string' && date.includes('T')) {
-        dateString = date.split('T')[0];
+    // Parsear la fecha - si es string ISO, extraer solo YYYY-MM-DD
+    let targetDate;
+    if (typeof date === 'string') {
+        // Si tiene formato ISO completo, extraer solo la fecha
+        const dateOnly = date.substring(0, 10); // YYYY-MM-DD
+        targetDate = new Date(dateOnly);
+    } else {
+        targetDate = new Date(date);
     }
     
-    // Crear fecha en zona horaria local
-    const targetDate = new Date(dateString + 'T00:00:00');
     targetDate.setHours(0, 0, 0, 0);
     
-    const diffTime = targetDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Calcular diferencia en milisegundos
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
     return diffDays;
 }
