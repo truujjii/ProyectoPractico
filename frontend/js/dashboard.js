@@ -22,12 +22,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         : user.email.split('@')[0];
     document.getElementById('user-info').textContent = `👤 ${userName}`;
     
-    // Verificar si es admin - SIMPLE: solo revisar localStorage
+    // Verificar si es admin o founder - SIMPLE: solo revisar localStorage
     const userRole = localStorage.getItem('userRole');
     console.log('User role from localStorage:', userRole);
     
-    if (userRole === 'admin') {
-        console.log('User is admin! Showing button...');
+    if (userRole === 'admin' || userRole === 'founder') {
+        console.log('User is admin/founder! Showing button...');
         const adminBtn = document.getElementById('admin-btn');
         if (adminBtn) {
             adminBtn.style.display = 'inline-block';

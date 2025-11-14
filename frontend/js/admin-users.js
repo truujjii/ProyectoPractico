@@ -16,12 +16,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    // Verificar que el usuario es admin - SIMPLE
-    if (userRole !== 'admin') {
+    // Verificar que el usuario es admin o founder
+    if (userRole !== 'admin' && userRole !== 'founder') {
         alert('⛔ No tienes permisos para acceder a esta página');
         window.location.href = 'dashboard.html';
         return;
     }
+    
+    // Guardar info del usuario actual para permisos
+    window.currentUserRole = userRole;
+    window.currentUserId = user.id;
     
     // Cargar usuarios
     await loadUsers();
@@ -98,6 +102,31 @@ function renderUsersTable() {
     `;
     
     allUsers.forEach(user => {
+        const roleClass = user.role === 'founder' ? 'founder' : user.role === 'admin' ? 'admin' : 'user';
+        const roleName = user.role === 'founder' ? 'Founder' : user.role === 'admin' ? 'Admin' : 'Usuario';
+        
+        // Determinar si el usuario actual puede editar/eliminar este usuario
+        const currentRole = window.currentUserRole;
+        const canEdit = currentRole === 'founder' || 
+                       (currentRole === 'admin' && user.role === 'user');
+        
+        html += `
+            <tr>
+                <td>${escapeHtml(user.email)}</td>
+                <td><span class="role-badge ${roleClass}">${roleName}</span></td>
+                <td>${formatDate(user.created_at)}</td>
+                <td>${user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Nunca'}</td>
+                <td style="text-align: center;">
+                    ${canEdit && user.role === 'user' ? `
+                        <button class="btn-icon" onclick="promoteToAdmin('${user.id}')" title="Promover a Admin">⬆️</button>
+                    ` : ''}
+                    ${canEdit && user.role !== 'founder' ? `
+                        <button class="btn-icon" onclick="deleteUserRole('${user.id}')" title="Eliminar">🗑️</button>
+                    ` : ''}
+                    ${!canEdit ? '<span style="color: #999; font-size: 0.85rem;">🔒 Sin permisos</span>' : ''}
+                </td>
+            </tr>
+        `;
         const createdAt = new Date(user.created_at).toLocaleDateString('es-ES', {
             day: '2-digit',
             month: 'short',
