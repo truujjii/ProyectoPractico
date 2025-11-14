@@ -132,6 +132,12 @@ async function login(email, password) {
         
         const userRole = roleData?.role || 'user';
         
+        // Actualizar fecha de último acceso
+        await supabaseClient
+            .from('user_roles')
+            .update({ last_access: new Date().toISOString() })
+            .eq('user_id', data.user.id);
+        
         localStorage.setItem('sessionId', data.session.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('userRole', userRole);
