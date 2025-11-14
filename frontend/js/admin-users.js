@@ -36,6 +36,8 @@ async function loadUsers() {
     const container = document.getElementById('users-container');
     container.innerHTML = '<div class="loading-text">Cargando usuarios...</div>';
     
+    showLoading(); // Mostrar indicador de carga
+    
     try {
         // Obtener todos los usuarios con sus roles Y emails desde la vista
         const { data, error } = await supabaseClient
@@ -70,6 +72,8 @@ async function loadUsers() {
                 </p>
             </div>
         `;
+    } finally {
+        hideLoading(); // Ocultar indicador de carga
     }
 }
 
