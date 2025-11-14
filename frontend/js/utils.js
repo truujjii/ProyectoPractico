@@ -157,10 +157,19 @@ function validatePassword(password) {
  * Calcular días hasta una fecha
  */
 function daysUntil(date) {
+    if (!date) return 0;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const targetDate = new Date(date);
+    // Extraer solo la parte de la fecha (YYYY-MM-DD) si es un ISO string
+    let dateString = date;
+    if (typeof date === 'string' && date.includes('T')) {
+        dateString = date.split('T')[0];
+    }
+    
+    // Crear fecha en zona horaria local
+    const targetDate = new Date(dateString + 'T00:00:00');
     targetDate.setHours(0, 0, 0, 0);
     
     const diffTime = targetDate - today;
