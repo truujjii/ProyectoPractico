@@ -253,6 +253,15 @@ async function refreshUsers() {
     showNotification('Lista actualizada', 'success');
 }
 
+// Navegación
+function goToDashboard() {
+    window.location.href = 'dashboard.html';
+}
+
+function goToChatbot() {
+    window.location.href = 'chatbot.html';
+}
+
 // Cerrar sesión
 async function handleLogout() {
     try {
