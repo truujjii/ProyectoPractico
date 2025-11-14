@@ -432,21 +432,27 @@ async function createTask(taskData) {
  */
 async function updateTask(taskId, taskData) {
     try {
-        const { data, error } = await supabaseClient
-            .from('tasks')
-            .update(taskData)
-            .eq('id', taskId)
-            .select()
-            .single();
+        const response = await fetch(`${API_BASE_URL}/tasks/updateTask`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Session-ID': localStorage.getItem('sessionId')
+            },
+            body: JSON.stringify({
+                taskId: taskId,
+                title: taskData.title,
+                description: taskData.description,
+                subject: taskData.subject,
+                dueDate: taskData.dueDate,
+                priority: taskData.priority,
+                isCompleted: taskData.isCompleted
+            })
+        });
         
-        if (error) throw error;
-        
-        return {
-            success: true,
-            data: { task: data },
-            message: 'Tarea actualizada exitosamente'
-        };
+        const data = await response.json();
+        return data;
     } catch (error) {
+        console.error('Update task error:', error);
         return {
             success: false,
             message: error.message
@@ -459,18 +465,19 @@ async function updateTask(taskId, taskData) {
  */
 async function deleteTask(taskId) {
     try {
-        const { error } = await supabaseClient
-            .from('tasks')
-            .delete()
-            .eq('id', taskId);
+        const response = await fetch(`${API_BASE_URL}/tasks/deleteTask`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Session-ID': localStorage.getItem('sessionId')
+            },
+            body: JSON.stringify({ taskId })
+        });
         
-        if (error) throw error;
-        
-        return {
-            success: true,
-            message: 'Tarea eliminada exitosamente'
-        };
+        const data = await response.json();
+        return data;
     } catch (error) {
+        console.error('Delete task error:', error);
         return {
             success: false,
             message: error.message
@@ -483,8 +490,7 @@ async function deleteTask(taskId) {
  */
 async function toggleTaskComplete(taskId, isCompleted) {
     return await updateTask(taskId, { 
-        completed: isCompleted,
-        completed_at: isCompleted ? new Date().toISOString() : null
+        isCompleted: isCompleted
     });
 }
 
