@@ -121,6 +121,17 @@ function getNextClassResponse() {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
+    // Primero buscar si hay una clase en curso ahora mismo
+    const ongoingClass = currentSchedule.find(c => 
+        c.dayOfWeek === today && 
+        c.startTime <= currentTime && 
+        c.endTime > currentTime
+    );
+    
+    if (ongoingClass) {
+        return `📚 Tienes clase AHORA:\n\n${ongoingClass.subjectName}\n⏰ ${ongoingClass.startTime} - ${ongoingClass.endTime}\n📍 ${ongoingClass.location}\n👨‍🏫 ${ongoingClass.professor}`;
+    }
+    
     // Buscar clases de hoy que aún no han empezado
     const todayClasses = currentSchedule
         .filter(c => c.dayOfWeek === today && c.startTime > currentTime)
