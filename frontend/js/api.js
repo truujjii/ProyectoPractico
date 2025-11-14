@@ -432,25 +432,35 @@ async function createTask(taskData) {
  */
 async function updateTask(taskId, taskData) {
     try {
-        const response = await fetch(`${API_BASE_URL}/tasks/updateTask`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Session-ID': localStorage.getItem('sessionId')
-            },
-            body: JSON.stringify({
-                taskId: taskId,
-                title: taskData.title,
-                description: taskData.description,
-                subject: taskData.subject,
-                dueDate: taskData.dueDate,
-                priority: taskData.priority,
-                isCompleted: taskData.isCompleted
-            })
-        });
+        // Construir objeto de actualización
+        const updates = {
+            title: taskData.title,
+            description: taskData.description,
+            subject: taskData.subject,
+            due_date: taskData.dueDate,
+            priority: taskData.priority
+        };
+
+        // Si isCompleted está definido, actualizar campos relacionados
+        if (taskData.isCompleted !== undefined) {
+            updates.is_completed = taskData.isCompleted;
+            updates.completed_at = taskData.isCompleted ? new Date().toISOString() : null;
+        }
+
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .update(updates)
+            .eq('id', taskId)
+            .select()
+            .single();
         
-        const data = await response.json();
-        return data;
+        if (error) throw error;
+        
+        return {
+            success: true,
+            data: { task: data },
+            message: 'Tarea actualizada exitosamente'
+        };
     } catch (error) {
         console.error('Update task error:', error);
         return {
@@ -465,17 +475,17 @@ async function updateTask(taskId, taskData) {
  */
 async function deleteTask(taskId) {
     try {
-        const response = await fetch(`${API_BASE_URL}/tasks/deleteTask`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Session-ID': localStorage.getItem('sessionId')
-            },
-            body: JSON.stringify({ taskId })
-        });
+        const { error } = await supabaseClient
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
         
-        const data = await response.json();
-        return data;
+        if (error) throw error;
+        
+        return {
+            success: true,
+            message: 'Tarea eliminada exitosamente'
+        };
     } catch (error) {
         console.error('Delete task error:', error);
         return {
