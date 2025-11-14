@@ -454,11 +454,13 @@ function closeTaskModal() {
 async function saveTask(event) {
     event.preventDefault();
     
+    const dueDateValue = document.getElementById('task-due-date').value;
+    
     const taskData = {
         title: document.getElementById('task-title').value,
         description: document.getElementById('task-description').value || null,
         subject: document.getElementById('task-subject').value || null,
-        dueDate: document.getElementById('task-due-date').value,
+        dueDate: dueDateValue ? new Date(dueDateValue + 'T23:59:59').toISOString() : null,
         priority: document.getElementById('task-priority').value
     };
     
