@@ -180,9 +180,7 @@ function renderTasksList() {
     
     currentTasks.forEach(task => {
         const isCompleted = task.isCompleted;
-        const daysLeft = daysUntil(task.dueDate);
-        const borderColor = getTaskBorderColor(daysLeft);
-        const urgencyText = getTaskUrgencyText(daysLeft);
+        const borderColor = isCompleted ? '#999' : '#1E6B52';
         
         html += `
             <div class="task-item ${isCompleted ? 'completed' : ''}" style="border-left: 4px solid ${borderColor}">
@@ -200,8 +198,8 @@ function renderTasksList() {
                     ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
                     <div class="task-meta">
                         ${task.subject ? `<span>📚 ${escapeHtml(task.subject)}</span>` : ''}
-                        <span>📅 ${formatDate(task.dueDate)}</span>
-                        ${!isCompleted ? `<span>${urgencyText}</span>` : '<span>✅ Completada</span>'}
+                        ${task.dueDate ? `<span>📅 ${formatDate(task.dueDate)}</span>` : ''}
+                        ${isCompleted ? '<span>✅ Completada</span>' : ''}
                     </div>
                 </div>
                 <div class="task-actions">

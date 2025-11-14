@@ -154,57 +154,9 @@ function validatePassword(password) {
 }
 
 /**
- * Calcular días hasta una fecha
+ * Funciones de fecha eliminadas - daysUntil, getTaskBorderColor, getTaskUrgencyText
+ * Se mostrará solo la fecha de vencimiento sin cálculos de días
  */
-function daysUntil(date) {
-    if (!date) return 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Parsear la fecha en zona horaria local
-    let targetDate;
-    if (typeof date === 'string') {
-        // Si viene como "YYYY-MM-DD", parsearlo en zona horaria local
-        const [year, month, day] = date.substring(0, 10).split('-');
-        targetDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    } else {
-        targetDate = new Date(date);
-    }
-    
-    targetDate.setHours(0, 0, 0, 0);
-    
-    // Calcular diferencia en días
-    const diffTime = targetDate.getTime() - today.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
-}
-
-/**
- * Obtener color de borde según proximidad de fecha
- */
-function getTaskBorderColor(dueDate) {
-    const days = daysUntil(dueDate);
-    
-    if (days < 0) return '#D32F2F'; // Atrasada - rojo
-    if (days === 0) return '#D32F2F'; // Hoy - rojo
-    if (days <= 7) return '#F57C00'; // Esta semana - naranja
-    return '#1E6B52'; // Más de una semana - verde
-}
-
-/**
- * Obtener texto de urgencia de tarea
- */
-function getTaskUrgencyText(dueDate) {
-    const days = daysUntil(dueDate);
-    
-    if (days < 0) return `Atrasada ${Math.abs(days)} día${Math.abs(days) !== 1 ? 's' : ''}`;
-    if (days === 0) return 'Vence hoy';
-    if (days === 1) return 'Vence mañana';
-    if (days <= 7) return `Vence en ${days} días`;
-    return `Vence en ${days} días`;
-}
 
 /**
  * Escapar HTML para prevenir XSS
