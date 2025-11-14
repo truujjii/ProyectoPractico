@@ -17,16 +17,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Cargar datos del usuario
     await loadUserData();
     
-    // Cargar historial de mensajes del sessionStorage
-    const savedHistory = sessionStorage.getItem('chatHistory');
-    if (savedHistory) {
-        try {
-            messageHistory = JSON.parse(savedHistory);
-            renderMessages();
-        } catch (error) {
-            console.error('Error loading chat history:', error);
-        }
-    }
+    // BORRAR historial automáticamente al entrar
+    sessionStorage.removeItem('chatHistory');
+    messageHistory = [];
     
     // Scroll al final
     scrollToBottom();
@@ -417,16 +410,15 @@ function goBack() {
     window.location.href = 'dashboard.html';
 }
 
-// Limpiar historial (opcional - se puede añadir un botón)
-function clearHistory() {
-    if (confirm('¿Estás seguro de borrar el historial de chat?')) {
-        messageHistory = [];
-        sessionStorage.removeItem('chatHistory');
-        
-        const container = document.getElementById('messages-container');
-        const messagesToRemove = container.querySelectorAll('.message-wrapper');
-        messagesToRemove.forEach(msg => msg.remove());
-        
-        showNotification('Historial borrado', 'success');
-    }
+// Reiniciar chat (botón manual)
+function resetChat() {
+    messageHistory = [];
+    sessionStorage.removeItem('chatHistory');
+    
+    const container = document.getElementById('messages-container');
+    const messagesToRemove = container.querySelectorAll('.message-wrapper');
+    messagesToRemove.forEach(msg => msg.remove());
+    
+    scrollToBottom();
+    showNotification('Conversación reiniciada', 'success');
 }

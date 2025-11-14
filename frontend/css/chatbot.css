@@ -43,8 +43,23 @@
     background: rgba(255, 255, 255, 0.3);
 }
 
-.header-spacer {
-    width: 80px; /* Para centrar el título */
+.reset-button {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reset-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(180deg);
 }
 
 /* Messages Container */
