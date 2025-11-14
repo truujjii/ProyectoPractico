@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.currentUserRole = userRole;
     window.currentUserId = user.id;
     
+    // Mostrar información del usuario en el header
+    const userName = user.user_metadata?.first_name 
+        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim() 
+        : user.email.split('@')[0];
+    document.getElementById('user-info').textContent = `👤 ${userName}`;
+    
     // Cargar usuarios
     await loadUsers();
 });
