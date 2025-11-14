@@ -456,22 +456,25 @@ async function saveTask(event) {
     
     const dueDateValue = document.getElementById('task-due-date').value;
     
-    // Convertir fecha local a ISO UTC
+    // Convertir fecha a timestamp PostgreSQL compatible
     let dueDateISO = null;
     if (dueDateValue) {
         // dueDateValue es "YYYY-MM-DD"
-        const [year, month, day] = dueDateValue.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59);
-        dueDateISO = date.toISOString();
+        // Crear fecha en zona horaria local y convertir a UTC
+        const localDate = new Date(dueDateValue + 'T00:00:00');
+        localDate.setHours(23, 59, 59, 0);
+        dueDateISO = localDate.toISOString();
     }
     
     const taskData = {
-        title: document.getElementById('task-title').value,
-        description: document.getElementById('task-description').value || null,
+        title: document.getElementById('task-title').value.trim(),
+        description: document.getElementById('task-description').value.trim() || null,
         subject: document.getElementById('task-subject').value || null,
         dueDate: dueDateISO,
         priority: document.getElementById('task-priority').value
     };
+    
+    console.log('Saving task with data:', taskData);
     
     try {
         let response;
@@ -489,6 +492,7 @@ async function saveTask(event) {
             renderQuickView();
         } else {
             showNotification(response.message || 'Error al guardar', 'error');
+            console.error('Save task error response:', response);
         }
     } catch (error) {
         console.error('Error saving task:', error);
