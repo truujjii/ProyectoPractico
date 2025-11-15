@@ -102,6 +102,7 @@ function renderUsersTable() {
             <thead>
                 <tr>
                     <th>Email</th>
+                    <th>User ID</th>
                     <th>Rol</th>
                     <th>Fecha de Registro</th>
                     <th>Último Acceso</th>
@@ -123,6 +124,7 @@ function renderUsersTable() {
         html += `
             <tr>
                 <td>${escapeHtml(user.email)}</td>
+                <td><code style="font-size: 0.85rem; background: #f5f5f5; padding: 2px 6px; border-radius: 4px;">${user.id}</code></td>
                 <td><span class="role-badge ${roleClass}">${roleName}</span></td>
                 <td>${formatDate(user.created_at)}</td>
                 <td>${user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Nunca'}</td>
