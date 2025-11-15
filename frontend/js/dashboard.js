@@ -187,15 +187,19 @@ function renderTasksList() {
         const isCompleted = task.isCompleted;
         const borderColor = isCompleted ? '#999' : '#1E6B52';
         
+        // Detectar si es tarea del campus virtual o manual
+        const isFromCampus = !task.taskId.toString().startsWith('manual-') && !task.taskId.toString().startsWith('migrated-');
+        const campusBadge = isFromCampus ? '<span class="campus-badge">🎓 Campus Virtual</span>' : '';
+        
         html += `
-            <div class="task-item ${isCompleted ? 'completed' : ''}" style="border-left: 4px solid ${borderColor}">
+            <div class="task-item ${isCompleted ? 'completed' : ''} ${isFromCampus ? 'campus-task' : ''}" style="border-left: 4px solid ${borderColor}">
                 <div class="task-checkbox">
                     <input type="checkbox" ${isCompleted ? 'checked' : ''} 
                            onchange="toggleTaskCompleteAction(${task.taskId}, this.checked)">
                 </div>
                 <div class="task-info">
                     <div class="task-header">
-                        <span class="task-title">${escapeHtml(task.title)}</span>
+                        <span class="task-title">${escapeHtml(task.title)} ${campusBadge}</span>
                         ${task.priority === 'Alta' ? '<span class="task-priority high">⚠️ Alta</span>' : ''}
                         ${task.priority === 'Media' ? '<span class="task-priority medium">➖ Media</span>' : ''}
                         ${task.priority === 'Baja' ? '<span class="task-priority low">🔽 Baja</span>' : ''}

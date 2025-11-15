@@ -266,7 +266,7 @@
 .campus-badge {
     display: inline-block;
     background: linear-gradient(135deg, var(--uab-green-primary) 0%, var(--uab-green-accent) 100%);
-    color: var(--uab-white);
+    color: #000000;
     font-size: 0.7rem;
     padding: 2px 8px;
     border-radius: 12px;
@@ -345,6 +345,13 @@
     gap: 1rem;
     align-items: start;
     border-left: 4px solid var(--uab-green-primary);
+}
+
+/* Tarea del Campus Virtual - estilo especial */
+.task-item.campus-task {
+    background: linear-gradient(135deg, rgba(30, 107, 82, 0.08) 0%, var(--uab-white) 100%);
+    border-left: 4px solid var(--uab-green-accent);
+    box-shadow: 0 2px 6px rgba(30, 107, 82, 0.12);
 }
 
 .task-item:hover {
