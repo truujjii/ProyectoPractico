@@ -155,6 +155,7 @@ async function loadTasks() {
                 title: t.title,
                 subject: t.subject,
                 dueDate: t.due_date,
+                priority: t.priority,
                 isCompleted: t.is_completed,
                 completedAt: t.completed_at
             }));

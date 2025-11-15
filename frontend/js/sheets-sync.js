@@ -69,8 +69,8 @@ async function syncTasksFromSheets() {
         
         for (const row of rows) {
             try {
-                // Formato: id | user_id | title | subject | due_date | is_completed | created_at
-                const [sheetId, userId, title, subject, dueDate, isCompleted, createdAt] = row;
+                // Formato: id | user_id | title | subject | due_date | is_completed | created_at | priority
+                const [sheetId, userId, title, subject, dueDate, isCompleted, createdAt, priority] = row;
                 
                 // Validar que tiene los datos mínimos
                 if (!sheetId || !userId || !title) {
@@ -100,6 +100,7 @@ async function syncTasksFromSheets() {
                     subject: subject || null,
                     due_date: dueDate || null,
                     is_completed: isCompleted === 'TRUE' || isCompleted === 'true' || isCompleted === true,
+                    priority: priority || 'Media',
                     created_at: createdAt || new Date().toISOString()
                 };
                 

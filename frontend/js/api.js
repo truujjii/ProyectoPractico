@@ -414,6 +414,7 @@ async function createTask(taskData) {
             title: taskData.title,
             subject: taskData.subject || null,
             due_date: taskData.dueDate,
+            priority: taskData.priority || 'Media',
             is_completed: false,
             created_at: new Date().toISOString()
         };
@@ -449,6 +450,7 @@ async function updateTask(taskId, taskData) {
             title: taskData.title,
             subject: taskData.subject,
             due_date: taskData.dueDate,
+            priority: taskData.priority,
             updated_at: new Date().toISOString()
         };
 
