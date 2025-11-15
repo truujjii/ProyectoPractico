@@ -105,17 +105,8 @@ async function syncTasksFromSheets() {
                 };
                 
                 if (existing) {
-                    // Actualizar tarea existente
-                    const { error: updateError } = await supabaseClient
-                        .from('tasks')
-                        .update(taskData)
-                        .eq('id', sheetId);
-                    
-                    if (updateError) {
-                        console.error('Error actualizando tarea:', updateError);
-                    } else {
-                        updatedCount++;
-                    }
+                    // Ya existe, no hacer nada (no sobrescribir cambios del usuario)
+                    console.log('⏭️ Tarea ya existe, omitiendo:', sheetId);
                 } else {
                     // Crear nueva tarea
                     const { error: insertError } = await supabaseClient
@@ -126,6 +117,7 @@ async function syncTasksFromSheets() {
                         console.error('Error creando tarea:', insertError);
                     } else {
                         createdCount++;
+                        syncedCount++;
                     }
                 }
                 
@@ -136,8 +128,8 @@ async function syncTasksFromSheets() {
             }
         }
         
-        if (syncedCount > 0) {
-            showNotification(`✅ Tareas sincronizadas: ${createdCount} nuevas, ${updatedCount} actualizadas`, 'success');
+        if (createdCount > 0) {
+            showNotification(`✅ ${createdCount} tarea(s) nueva(s) añadida(s) desde el campus virtual`, 'success');
             
             // Recargar tareas en la UI
             if (typeof loadTasks === 'function') {
@@ -223,19 +215,8 @@ async function syncClassesFromSheets() {
                 console.log('💾 Datos a guardar:', classData);
                 
                 if (existing) {
-                    // Actualizar clase existente
-                    console.log('🔄 Actualizando clase existente:', sheetId);
-                    const { error: updateError } = await supabaseClient
-                        .from('schedule')
-                        .update(classData)
-                        .eq('id', sheetId);
-                    
-                    if (updateError) {
-                        console.error('❌ Error actualizando clase:', updateError);
-                    } else {
-                        console.log('✅ Clase actualizada');
-                        updatedCount++;
-                    }
+                    // Ya existe, no hacer nada (no sobrescribir cambios del usuario)
+                    console.log('⏭️ Clase ya existe, omitiendo:', sheetId);
                 } else {
                     // Crear nueva clase
                     console.log('➕ Creando nueva clase:', sheetId);
@@ -248,6 +229,7 @@ async function syncClassesFromSheets() {
                     } else {
                         console.log('✅ Clase creada');
                         createdCount++;
+                        syncedCount++;
                     }
                 }
                 
@@ -258,10 +240,10 @@ async function syncClassesFromSheets() {
             }
         }
         
-        console.log(`📊 Resumen: ${syncedCount} sincronizadas (${createdCount} nuevas, ${updatedCount} actualizadas)`);
+        console.log('📊 Resumen:', { sincronizadas: syncedCount, nuevas: createdCount });
         
-        if (syncedCount > 0) {
-            showNotification(`✅ Clases sincronizadas: ${createdCount} nuevas, ${updatedCount} actualizadas`, 'success');
+        if (createdCount > 0) {
+            showNotification(`✅ ${createdCount} clase(s) nueva(s) añadida(s) desde el campus virtual`, 'success');
             
             // Recargar horario en la UI
             if (typeof loadSchedule === 'function') {
