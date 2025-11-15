@@ -63,23 +63,32 @@ async function syncTasksFromSheets() {
         }
         
         const user = JSON.parse(localStorage.getItem('user'));
-        let syncedCount = 0;
         let createdCount = 0;
-        let updatedCount = 0;
+        let skippedCount = 0;
+        
+        console.log('📋 Usuario actual:', user.id);
+        console.log('📊 Total filas en Google Sheets:', rows.length);
         
         for (const row of rows) {
             try {
                 // Formato: id | user_id | title | subject | due_date | is_completed | created_at | priority
                 const [sheetId, userId, title, subject, dueDate, isCompleted, createdAt, priority] = row;
                 
+                console.log('🔍 Procesando fila:', { sheetId, userId, title });
+                
                 // Validar que tiene los datos mínimos
                 if (!sheetId || !userId || !title) {
-                    console.warn('Fila inválida, saltando:', row);
+                    console.warn('⚠️ Fila inválida (faltan datos), saltando:', row);
                     continue;
                 }
                 
                 // Solo sincronizar tareas del usuario actual
-                if (userId !== user.id) continue;
+                if (userId !== user.id) {
+                    console.log('⏭️ Tarea de otro usuario, saltando');
+                    continue;
+                }
+                
+                console.log('✅ Clase válida para sincronizar:', sheetId);
                 
                 // Verificar si la tarea ya existe en Supabase
                 const { data: existing, error: checkError } = await supabaseClient
@@ -89,44 +98,49 @@ async function syncTasksFromSheets() {
                     .maybeSingle();
                 
                 if (checkError && checkError.code !== 'PGRST116') {
-                    console.error('Error verificando tarea:', checkError);
+                    console.error('❌ Error verificando tarea:', checkError);
                     continue;
                 }
                 
-                const taskData = {
-                    id: sheetId,
-                    user_id: userId,
-                    title: title,
-                    subject: subject || null,
-                    due_date: dueDate || null,
-                    is_completed: isCompleted === 'TRUE' || isCompleted === 'true' || isCompleted === true,
-                    priority: priority || 'Media',
-                    created_at: createdAt || new Date().toISOString()
-                };
+                console.log('📝 ¿Tarea existe?', existing ? 'SÍ' : 'NO');
                 
                 if (existing) {
-                    // Ya existe, no hacer nada (no sobrescribir cambios del usuario)
-                    console.log('⏭️ Tarea ya existe, omitiendo:', sheetId);
+                    // Ya existe, no hacer nada
+                    console.log('⏭️ Tarea ya existe en BD, omitiendo:', sheetId);
+                    skippedCount++;
                 } else {
                     // Crear nueva tarea
+                    const taskData = {
+                        id: sheetId,
+                        user_id: userId,
+                        title: title,
+                        subject: subject || null,
+                        due_date: dueDate || null,
+                        is_completed: isCompleted === 'TRUE' || isCompleted === 'true' || isCompleted === true,
+                        priority: priority || 'Media',
+                        created_at: createdAt || new Date().toISOString()
+                    };
+                    
+                    console.log('💾 Insertando tarea:', taskData);
+                    
                     const { error: insertError } = await supabaseClient
                         .from('tasks')
                         .insert(taskData);
                     
                     if (insertError) {
-                        console.error('Error creando tarea:', insertError);
+                        console.error('❌ Error creando tarea:', insertError);
                     } else {
+                        console.log('✅ Tarea creada exitosamente');
                         createdCount++;
-                        syncedCount++;
                     }
                 }
                 
-                syncedCount++;
-                
             } catch (rowError) {
-                console.error('Error procesando fila:', rowError, row);
+                console.error('❌ Error procesando fila:', rowError, row);
             }
         }
+        
+        console.log('📊 Resumen: Creadas:', createdCount, '| Omitidas:', skippedCount);
         
         if (createdCount > 0) {
             showNotification(`✅ ${createdCount} tarea(s) nueva(s) añadida(s) desde el campus virtual`, 'success');
