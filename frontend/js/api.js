@@ -376,9 +376,9 @@ async function getTasks(filter = 'all') {
             .eq('user_id', user.id);
         
         if (filter === 'pending') {
-            query = query.eq('completed', false);
+            query = query.eq('is_completed', false);
         } else if (filter === 'completed') {
-            query = query.eq('completed', true);
+            query = query.eq('is_completed', true);
         }
         
         query = query.order('due_date', { ascending: true });
@@ -409,13 +409,13 @@ async function createTask(taskData) {
         
         // Convertir a snake_case
         const dbData = {
+            id: `manual-task-${Date.now()}`,
             user_id: user.id,
             title: taskData.title,
-            description: taskData.description || null,
             subject: taskData.subject || null,
             due_date: taskData.dueDate,
-            priority: taskData.priority || 'Media',
-            is_completed: false
+            is_completed: false,
+            created_at: new Date().toISOString()
         };
         
         const { data, error } = await supabaseClient
@@ -447,10 +447,9 @@ async function updateTask(taskId, taskData) {
         // Construir objeto de actualización
         const updates = {
             title: taskData.title,
-            description: taskData.description,
             subject: taskData.subject,
             due_date: taskData.dueDate,
-            priority: taskData.priority
+            updated_at: new Date().toISOString()
         };
 
         // Si isCompleted está definido, actualizar campos relacionados

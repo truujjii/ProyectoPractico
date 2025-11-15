@@ -153,10 +153,8 @@ async function loadTasks() {
             currentTasks = (response.data.tasks || []).map(t => ({
                 taskId: t.id,
                 title: t.title,
-                description: t.description,
                 subject: t.subject,
                 dueDate: t.due_date,
-                priority: t.priority,
                 isCompleted: t.is_completed,
                 completedAt: t.completed_at
             }));
