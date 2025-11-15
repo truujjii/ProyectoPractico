@@ -161,12 +161,16 @@ async function syncClassesFromSheets() {
         
         const rows = await readFromSheets(window.SheetsConfig.SHEET_NAMES.CLASSES);
         
+        console.log('📊 Filas leídas de Google Sheets (Clases):', rows);
+        
         if (!rows || rows.length === 0) {
             showNotification('ℹ️ No hay clases en Google Sheets', 'info');
             return;
         }
         
         const user = JSON.parse(localStorage.getItem('user'));
+        console.log('👤 User ID actual:', user.id);
+        
         let syncedCount = 0;
         let createdCount = 0;
         let updatedCount = 0;
@@ -176,14 +180,21 @@ async function syncClassesFromSheets() {
                 // Formato: id | user_id | subject_name | day_of_week | start_time | end_time | location | professor
                 const [sheetId, userId, subjectName, dayOfWeek, startTime, endTime, location, professor] = row;
                 
+                console.log('📝 Procesando fila:', { sheetId, userId, subjectName, dayOfWeek, startTime, endTime });
+                
                 // Validar que tiene los datos mínimos
                 if (!sheetId || !userId || !subjectName || !dayOfWeek || !startTime || !endTime) {
-                    console.warn('Fila inválida, saltando:', row);
+                    console.warn('⚠️ Fila inválida, saltando:', row);
                     continue;
                 }
                 
                 // Solo sincronizar clases del usuario actual
-                if (userId !== user.id) continue;
+                if (userId !== user.id) {
+                    console.log('⏭️ Saltando clase de otro usuario:', userId);
+                    continue;
+                }
+                
+                console.log('✅ Clase válida para sincronizar:', subjectName);
                 
                 // Verificar si la clase ya existe en Supabase
                 const { data: existing, error: checkError } = await supabaseClient
@@ -193,7 +204,7 @@ async function syncClassesFromSheets() {
                     .maybeSingle();
                 
                 if (checkError && checkError.code !== 'PGRST116') {
-                    console.error('Error verificando clase:', checkError);
+                    console.error('❌ Error verificando clase:', checkError);
                     continue;
                 }
                 
@@ -208,27 +219,33 @@ async function syncClassesFromSheets() {
                     professor: professor || ''
                 };
                 
+                console.log('💾 Datos a guardar:', classData);
+                
                 if (existing) {
                     // Actualizar clase existente
+                    console.log('🔄 Actualizando clase existente:', sheetId);
                     const { error: updateError } = await supabaseClient
                         .from('schedule')
                         .update(classData)
                         .eq('id', sheetId);
                     
                     if (updateError) {
-                        console.error('Error actualizando clase:', updateError);
+                        console.error('❌ Error actualizando clase:', updateError);
                     } else {
+                        console.log('✅ Clase actualizada');
                         updatedCount++;
                     }
                 } else {
                     // Crear nueva clase
+                    console.log('➕ Creando nueva clase:', sheetId);
                     const { error: insertError } = await supabaseClient
                         .from('schedule')
                         .insert(classData);
                     
                     if (insertError) {
-                        console.error('Error creando clase:', insertError);
+                        console.error('❌ Error creando clase:', insertError);
                     } else {
+                        console.log('✅ Clase creada');
                         createdCount++;
                     }
                 }
@@ -236,9 +253,11 @@ async function syncClassesFromSheets() {
                 syncedCount++;
                 
             } catch (rowError) {
-                console.error('Error procesando fila:', rowError, row);
+                console.error('❌ Error procesando fila:', rowError, row);
             }
         }
+        
+        console.log(`📊 Resumen: ${syncedCount} sincronizadas (${createdCount} nuevas, ${updatedCount} actualizadas)`);
         
         if (syncedCount > 0) {
             showNotification(`✅ Clases sincronizadas: ${createdCount} nuevas, ${updatedCount} actualizadas`, 'success');
@@ -252,7 +271,7 @@ async function syncClassesFromSheets() {
         }
         
     } catch (error) {
-        console.error('Error sincronizando clases desde Sheets:', error);
+        console.error('❌ Error sincronizando clases desde Sheets:', error);
         showNotification('❌ Error al sincronizar clases', 'error');
     } finally {
         hideLoading();
