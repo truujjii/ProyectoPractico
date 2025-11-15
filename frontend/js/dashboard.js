@@ -114,10 +114,14 @@ function renderScheduleGrid() {
             html += '<div class="no-classes">Sin clases</div>';
         } else {
             dayClasses.forEach(classItem => {
+                // Detectar si es clase del campus virtual o manual
+                const isFromCampus = !classItem.classId.startsWith('manual-') && !classItem.classId.startsWith('migrated-');
+                const campusBadge = isFromCampus ? '<span class="campus-badge">🎓 Campus Virtual</span>' : '';
+                
                 html += `
-                    <div class="class-item">
+                    <div class="class-item ${isFromCampus ? 'campus-class' : ''}">
                         <div class="class-info">
-                            <div class="class-subject">${escapeHtml(classItem.subjectName)}</div>
+                            <div class="class-subject">${escapeHtml(classItem.subjectName)} ${campusBadge}</div>
                             <div class="class-time">⏰ ${classItem.startTime} - ${classItem.endTime}</div>
                             ${classItem.location ? `<div class="class-location">📍 ${escapeHtml(classItem.location)}</div>` : ''}
                             ${classItem.professor ? `<div class="class-professor">👨‍🏫 ${escapeHtml(classItem.professor)}</div>` : ''}

@@ -227,6 +227,13 @@
     position: relative;
 }
 
+/* Clase del Campus Virtual - estilo especial */
+.class-item.campus-class {
+    background: linear-gradient(135deg, rgba(30, 107, 82, 0.15) 0%, rgba(30, 107, 82, 0.05) 100%);
+    border-left: 3px solid var(--uab-green-accent);
+    box-shadow: 0 2px 4px rgba(30, 107, 82, 0.1);
+}
+
 .class-item:hover {
     background: rgba(30, 107, 82, 0.2);
     transform: translateX(4px);
@@ -253,6 +260,21 @@
 .class-location {
     font-size: 0.85rem;
     color: var(--uab-text-light);
+}
+
+/* Badge de Campus Virtual */
+.campus-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--uab-green-primary) 0%, var(--uab-green-accent) 100%);
+    color: var(--uab-white);
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(30, 107, 82, 0.3);
 }
 
 .class-actions {

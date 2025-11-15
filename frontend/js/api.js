@@ -253,11 +253,6 @@ async function createClass(classData) {
         
         if (error) throw error;
         
-        // Escribir también en Google Sheets (sincronización bidireccional)
-        if (window.SheetsWriter) {
-            await window.SheetsWriter.writeClassToSheets(dbData);
-        }
-        
         return {
             success: true,
             data: { class: data },
@@ -298,20 +293,6 @@ async function updateClass(classId, classData) {
         
         if (error) throw error;
         
-        // Actualizar también en Google Sheets (sincronización bidireccional)
-        if (window.SheetsWriter && data) {
-            await window.SheetsWriter.updateClassInSheets({
-                id: data.id,
-                user_id: data.user_id,
-                subject_name: data.subject_name,
-                day_of_week: data.day_of_week,
-                start_time: data.start_time,
-                end_time: data.end_time,
-                location: data.location,
-                professor: data.professor
-            });
-        }
-        
         return {
             success: true,
             data: { class: data },
@@ -336,11 +317,6 @@ async function deleteClass(classId) {
             .eq('id', classId);
         
         if (error) throw error;
-        
-        // Eliminar también de Google Sheets (sincronización bidireccional)
-        if (window.SheetsWriter) {
-            await window.SheetsWriter.deleteClassFromSheets(classId);
-        }
         
         return {
             success: true,
