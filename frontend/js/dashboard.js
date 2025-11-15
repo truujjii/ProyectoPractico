@@ -123,8 +123,8 @@ function renderScheduleGrid() {
                             ${classItem.professor ? `<div class="class-professor">👨‍🏫 ${escapeHtml(classItem.professor)}</div>` : ''}
                         </div>
                         <div class="class-actions">
-                            <button class="btn-icon" onclick="editClass(${classItem.classId})" title="Editar">✏️</button>
-                            <button class="btn-icon" onclick="deleteClassItem(${classItem.classId})" title="Eliminar">🗑️</button>
+                            <button class="btn-icon" onclick="editClass('${classItem.classId}')" title="Editar">✏️</button>
+                            <button class="btn-icon" onclick="deleteClassItem('${classItem.classId}')" title="Eliminar">🗑️</button>
                         </div>
                     </div>
                 `;

@@ -6,6 +6,15 @@
 const SHEET_ID = '1RnD7UmG-X3UjzwM7-Dobk9JBhl3r61nBgEdw9IDPYws';
 
 /**
+ * Manejar solicitudes OPTIONS (CORS preflight)
+ */
+function doOptions(e) {
+  return ContentService
+    .createTextOutput('')
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
  * Manejar solicitudes POST desde la web
  */
 function doPost(e) {
