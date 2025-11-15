@@ -6,14 +6,17 @@
 async function readFromSheets(sheetName, range = 'A2:Z1000') {
     try {
         const sheetId = window.SheetsConfig.SHEET_ID;
+        const apiKey = window.SheetsConfig.API_KEY;
         const fullRange = `${sheetName}!${range}`;
         
-        // Usar API v4 de Google Sheets (el sheet debe ser público o compartido con la service account)
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(fullRange)}`;
+        // Usar API v4 de Google Sheets con API Key
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(fullRange)}?key=${apiKey}`;
         
         const response = await fetch(url);
         
         if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error de Google Sheets API:', errorData);
             throw new Error(`Error al leer Google Sheets: ${response.statusText}`);
         }
         
