@@ -200,8 +200,9 @@ async function getSchedule() {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
         
+        // Leer de la tabla 'schedule' (sincronizada desde Google Sheets)
         const { data, error } = await supabaseClient
-            .from('classes')
+            .from('schedule')
             .select('*')
             .eq('user_id', user.id)
             .order('day_of_week', { ascending: true })
@@ -229,21 +230,23 @@ async function createClass(classData) {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
         
+        // Generar ID único para la clase
+        const classId = `manual-class-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
         // Convertir a snake_case y añadir campos necesarios
         const dbData = {
+            id: classId,
             user_id: user.id,
             subject_name: classData.subjectName,
             day_of_week: classData.dayOfWeek,
             start_time: classData.startTime,
             end_time: classData.endTime,
             location: classData.location || null,
-            professor: classData.professor || null,
-            semester_year: new Date().getFullYear(),
-            semester_period: new Date().getMonth() < 6 ? 'Primavera' : 'Otoño'
+            professor: classData.professor || null
         };
         
         const { data, error } = await supabaseClient
-            .from('classes')
+            .from('schedule')
             .insert([dbData])
             .select()
             .single();
@@ -279,7 +282,7 @@ async function updateClass(classId, classData) {
         };
         
         const { data, error } = await supabaseClient
-            .from('classes')
+            .from('schedule')
             .update(dbData)
             .eq('id', classId)
             .select()
@@ -306,7 +309,7 @@ async function updateClass(classId, classData) {
 async function deleteClass(classId) {
     try {
         const { error } = await supabaseClient
-            .from('classes')
+            .from('schedule')
             .delete()
             .eq('id', classId);
         
@@ -333,7 +336,7 @@ async function clearSemester() {
         if (!user) throw new Error('Usuario no autenticado');
         
         const { error } = await supabaseClient
-            .from('classes')
+            .from('schedule')
             .delete()
             .eq('user_id', user.id);
         
