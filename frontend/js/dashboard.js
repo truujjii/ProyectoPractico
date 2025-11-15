@@ -355,11 +355,27 @@ async function saveClass(event) {
 
 // Editar clase
 function editClass(classId) {
+    // Verificar si es una clase del campus virtual
+    const isFromCampus = !classId.startsWith('manual-') && !classId.startsWith('migrated-');
+    
+    if (isFromCampus) {
+        showNotification('⚠️ No puedes editar clases del Campus Virtual', 'error');
+        return;
+    }
+    
     openClassModal(classId);
 }
 
 // Eliminar clase
 async function deleteClassItem(classId) {
+    // Verificar si es una clase del campus virtual
+    const isFromCampus = !classId.startsWith('manual-') && !classId.startsWith('migrated-');
+    
+    if (isFromCampus) {
+        showNotification('⚠️ No puedes eliminar clases del Campus Virtual', 'error');
+        return;
+    }
+    
     if (!confirm('¿Estás seguro de eliminar esta clase?')) return;
     
     try {
@@ -509,11 +525,27 @@ async function saveTask(event) {
 
 // Editar tarea
 function editTask(taskId) {
+    // Verificar si es una tarea del campus virtual
+    const isFromCampus = !taskId.startsWith('manual-') && !taskId.startsWith('migrated-');
+    
+    if (isFromCampus) {
+        showNotification('⚠️ No puedes editar tareas del Campus Virtual', 'error');
+        return;
+    }
+    
     openTaskModal(taskId);
 }
 
 // Eliminar tarea
 async function deleteTaskItem(taskId) {
+    // Verificar si es una tarea del campus virtual
+    const isFromCampus = !taskId.startsWith('manual-') && !taskId.startsWith('migrated-');
+    
+    if (isFromCampus) {
+        showNotification('⚠️ No puedes eliminar tareas del Campus Virtual', 'error');
+        return;
+    }
+    
     if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
     
     try {
