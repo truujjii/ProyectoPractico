@@ -3,8 +3,8 @@
  * Permite crear, actualizar y eliminar datos en Google Sheets vía Apps Script
  */
 
-// URL del Apps Script (se actualizará después del deployment)
-const APPS_SCRIPT_URL = 'TU_URL_DE_APPS_SCRIPT_AQUI';
+// URL del Apps Script desplegado
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxs85szYO7Jv91zoSRvm4X58P9dsUchZikAz6UXDZWlKHUfg4koOJ61UV9ZPj4Kcgtf/exec';
 
 /**
  * Función genérica para llamar al Apps Script
