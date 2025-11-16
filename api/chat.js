@@ -1,6 +1,6 @@
 /**
  * API Route: /api/chat
- * Maneja peticiones del chatbot usando Azure OpenAI GPT-4
+ * Maneja peticiones del chatbot usando Google Gemini API
  * con acceso a la base de datos del usuario
  */
 
@@ -73,41 +73,44 @@ ESTADÍSTICAS:
 }
 
 /**
- * Llamar a Azure OpenAI GPT-4
+ * Llamar a Google Gemini API
  */
-async function callAzureOpenAI(messages) {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const apiKey = process.env.AZURE_OPENAI_API_KEY;
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
+async function callGeminiAPI(systemPrompt, userMessage) {
+    const apiKey = process.env.GEMINI_API_KEY;
     
-    if (!endpoint || !apiKey) {
-        throw new Error('Azure OpenAI credentials not configured');
+    if (!apiKey) {
+        throw new Error('Gemini API key not configured');
     }
     
-    const url = `${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    
+    // Combinar system prompt y mensaje del usuario
+    const fullPrompt = `${systemPrompt}\n\nUsuario: ${userMessage}`;
     
     const response = await fetch(url, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'api-key': apiKey
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            messages,
-            temperature: 0.7,
-            max_tokens: 800,
-            top_p: 0.95,
-            frequency_penalty: 0,
-            presence_penalty: 0
+            contents: [{
+                parts: [{ text: fullPrompt }]
+            }],
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 800,
+                topP: 0.95
+            }
         })
     });
     
     if (!response.ok) {
         const error = await response.text();
-        throw new Error(`Azure OpenAI error: ${error}`);
+        throw new Error(`Gemini API error: ${error}`);
     }
     
-    return response.json();
+    const data = await response.json();
+    return data.candidates[0]?.content?.parts[0]?.text || 'Lo siento, no pude generar una respuesta.';
 }
 
 /**
@@ -129,12 +132,9 @@ export default async function handler(req, res) {
         // Obtener contexto del usuario
         const context = await getUserContext(userId);
         
-        // Construir mensajes para GPT-4
-        const messages = [
-            {
-                role: 'system',
-                content: `Eres Smart UNI-BOT, un asistente personal universitario inteligente. 
-                
+        // Construir prompt del sistema
+        const systemPrompt = `Eres Smart UNI-BOT, un asistente personal universitario inteligente. 
+
 Tu objetivo es ayudar al estudiante con su organización académica. Puedes:
 - Consultar su horario de clases
 - Revisar sus tareas pendientes y completadas
@@ -150,19 +150,10 @@ IMPORTANTE:
 - Las respuestas deben ser concisas (máximo 3-4 líneas)
 
 CONTEXTO DEL ESTUDIANTE:
-${context.contextText}
-`
-            },
-            {
-                role: 'user',
-                content: message
-            }
-        ];
+${context.contextText}`;
         
-        // Llamar a Azure OpenAI
-        const aiResponse = await callAzureOpenAI(messages);
-        
-        const reply = aiResponse.choices[0]?.message?.content || 'Lo siento, no pude procesar tu pregunta.';
+        // Llamar a Gemini API
+        const reply = await callGeminiAPI(systemPrompt, message);
         
         return res.status(200).json({
             success: true,
