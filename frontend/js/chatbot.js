@@ -481,19 +481,23 @@ async function handleSendMessage() {
         // Enviar a la API (IA real con Gemini)
         const response = await queryChatbot(message);
         
+        console.log('Respuesta del chatbot:', response);
+        
         // Remover indicador de escritura
         typingIndicator.remove();
         
-        if (response.success && response.data.response) {
+        if (response.success && response.data && response.data.response) {
             // Añadir respuesta del bot
             addMessage(response.data.response, false);
         } else {
-            addMessage('Lo siento, hubo un error al procesar tu mensaje. 😔', false);
+            const errorMsg = response.message || response.error || 'Error desconocido';
+            console.error('Error en respuesta:', errorMsg, response);
+            addMessage(`Lo siento, hubo un error: ${errorMsg} 😔`, false);
         }
     } catch (error) {
         console.error('Error sending message:', error);
         typingIndicator.remove();
-        addMessage('Lo siento, no puedo responder en este momento. Por favor, intenta más tarde.', false);
+        addMessage(`Error: ${error.message || 'No puedo responder en este momento'}`, false);
     } finally {
         // Rehabilitar input
         input.disabled = false;
