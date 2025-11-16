@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 // Inicializar cliente de Supabase
 const supabase = createClient(
@@ -28,7 +28,7 @@ async function getUserContext(userId) {
 
     if (tasksError) throw tasksError;
 
-    return { schedule, tasks };
+    return { schedule: schedule || [], tasks: tasks || [] };
   } catch (error) {
     console.error('Error obteniendo contexto del usuario:', error);
     throw error;
@@ -80,7 +80,16 @@ async function callGeminiAPI(systemPrompt, userMessage) {
 }
 
 // Handler principal de Vercel
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Manejar CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Solo permitir POST
   if (req.method !== 'POST') {
     return res.status(405).json({ 
@@ -115,10 +124,10 @@ export default async function handler(req, res) {
 CONTEXTO DEL USUARIO:
 
 HORARIO DE CLASES:
-${schedule.map(c => `- ${c.subject} (${c.day_of_week}) ${c.start_time}-${c.end_time} en ${c.location}`).join('\n')}
+${schedule.length > 0 ? schedule.map(c => `- ${c.subject} (${c.day_of_week}) ${c.start_time}-${c.end_time} en ${c.location}`).join('\n') : 'No hay clases registradas'}
 
 TAREAS PENDIENTES:
-${tasks.filter(t => !t.completed).map(t => `- ${t.title} (${t.subject}) - Vence: ${t.due_date}${t.priority === 'high' ? ' [ALTA PRIORIDAD]' : ''}`).join('\n')}
+${tasks.filter(t => !t.completed).length > 0 ? tasks.filter(t => !t.completed).map(t => `- ${t.title} (${t.subject}) - Vence: ${t.due_date}${t.priority === 'high' ? ' [ALTA PRIORIDAD]' : ''}`).join('\n') : 'No hay tareas pendientes'}
 
 INSTRUCCIONES:
 - Responde de forma amigable y útil
@@ -148,7 +157,8 @@ INSTRUCCIONES:
     return res.status(500).json({
       success: false,
       error: 'Error procesando tu mensaje',
-      details: error.message
+      details: error.message,
+      stack: error.stack
     });
   }
-}
+};
