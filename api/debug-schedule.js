@@ -10,32 +10,42 @@ module.exports = async (req, res) => {
       process.env.SUPABASE_ANON_KEY
     );
 
-    // Obtener TODAS las clases sin filtrar por user_id
-    const { data: allSchedule, error } = await supabase
+    const targetUserId = '46e20e7d-4fa6-46db-af3c-c9bae7b9657c';
+
+    // Obtener clases del usuario específico
+    const { data: userSchedule, error: userError } = await supabase
+      .from('schedule')
+      .select('*')
+      .eq('user_id', targetUserId);
+
+    // Obtener TODAS las clases sin filtrar
+    const { data: allSchedule, error: allError } = await supabase
       .from('schedule')
       .select('id, user_id, subject_name, day_of_week')
       .limit(10);
 
-    if (error) throw error;
-
-    // Obtener user_ids únicos
-    const uniqueUserIds = [...new Set(allSchedule?.map(c => c.user_id) || [])];
-
     return res.status(200).json({
       success: true,
-      totalClasses: allSchedule?.length || 0,
-      uniqueUserIds: uniqueUserIds,
-      sample: allSchedule?.slice(0, 3).map(c => ({
-        id: c.id,
-        userId: c.user_id,
-        subject: c.subject_name,
-        day: c.day_of_week
-      }))
+      targetUserId,
+      userClasses: {
+        count: userSchedule?.length || 0,
+        sample: userSchedule?.slice(0, 3) || []
+      },
+      allClasses: {
+        total: allSchedule?.length || 0,
+        uniqueUserIds: [...new Set(allSchedule?.map(c => c.user_id) || [])],
+        sample: allSchedule?.slice(0, 3) || []
+      },
+      errors: {
+        userError: userError?.message || null,
+        allError: allError?.message || null
+      }
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 };
