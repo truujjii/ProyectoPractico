@@ -38,7 +38,7 @@ async function getUserContext(userId) {
 // Función para llamar a la API de Gemini
 async function callGeminiAPI(systemPrompt, userMessage) {
   const apiKey = process.env.GEMINI_API_KEY;
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
 
   const requestBody = {
     contents: [{
