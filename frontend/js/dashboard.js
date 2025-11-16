@@ -194,7 +194,7 @@ function renderTasksList() {
             <div class="task-item ${isCompleted ? 'completed' : ''} ${isFromCampus ? 'campus-task' : ''}" style="border-left: 4px solid ${borderColor}">
                 <div class="task-checkbox">
                     <input type="checkbox" ${isCompleted ? 'checked' : ''} 
-                           onchange="toggleTaskCompleteAction(${task.taskId}, this.checked)">
+                           onchange="toggleTaskCompleteAction('${task.taskId}', this.checked)">
                 </div>
                 <div class="task-info">
                     <div class="task-header">
@@ -211,8 +211,8 @@ function renderTasksList() {
                     </div>
                 </div>
                 <div class="task-actions">
-                    <button class="btn-icon" onclick="editTask(${task.taskId})" title="Editar">✏️</button>
-                    <button class="btn-icon" onclick="deleteTaskItem(${task.taskId})" title="Eliminar">🗑️</button>
+                    <button class="btn-icon" onclick="editTask('${task.taskId}')" title="Editar">✏️</button>
+                    <button class="btn-icon" onclick="deleteTaskItem('${task.taskId}')" title="Eliminar">🗑️</button>
                 </div>
             </div>
         `;
@@ -525,8 +525,9 @@ async function saveTask(event) {
 
 // Editar tarea
 function editTask(taskId) {
-    // Verificar si es una tarea del campus virtual
-    const isFromCampus = !taskId.startsWith('manual-') && !taskId.startsWith('migrated-');
+    // Normalizar a string y verificar si es una tarea del campus virtual
+    const idStr = String(taskId);
+    const isFromCampus = !idStr.startsWith('manual-') && !idStr.startsWith('migrated-');
     
     if (isFromCampus) {
         showNotification('⚠️ No puedes editar tareas del Campus Virtual', 'error');
@@ -538,8 +539,9 @@ function editTask(taskId) {
 
 // Eliminar tarea
 async function deleteTaskItem(taskId) {
-    // Verificar si es una tarea del campus virtual
-    const isFromCampus = !taskId.startsWith('manual-') && !taskId.startsWith('migrated-');
+    // Normalizar a string y verificar si es una tarea del campus virtual
+    const idStr = String(taskId);
+    const isFromCampus = !idStr.startsWith('manual-') && !idStr.startsWith('migrated-');
     
     if (isFromCampus) {
         showNotification('⚠️ No puedes eliminar tareas del Campus Virtual', 'error');
