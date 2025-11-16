@@ -1,188 +1,154 @@
-/**
- * API Route: /api/chat
- * Maneja peticiones del chatbot usando Google Gemini API
- * con acceso a la base de datos del usuario
- */
+import { createClient } from '@supabase/supabase-js';
 
-const { createClient } = require('@supabase/supabase-js');
-
-// Inicializar Supabase
+// Inicializar cliente de Supabase
 const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
 );
 
-/**
- * Obtener contexto del usuario desde la BD
- */
+// Función para obtener contexto del usuario desde Supabase
 async function getUserContext(userId) {
-    try {
-        // Obtener horario
-        const { data: schedule, error: scheduleError } = await supabase
-            .from('schedule')
-            .select('*')
-            .eq('user_id', userId);
-        
-        if (scheduleError) throw scheduleError;
-        
-        // Obtener tareas
-        const { data: tasks, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', userId);
-        
-        if (tasksError) throw tasksError;
-        
-        // Formatear contexto
-        const scheduleText = schedule.map(c => 
-            `${c.subject_name} - Día ${c.day_of_week} de ${c.start_time} a ${c.end_time} en ${c.location || 'ubicación desconocida'} con ${c.professor || 'profesor desconocido'}`
-        ).join('\n');
-        
-        const tasksText = tasks.map(t => 
-            `${t.title} (${t.subject || 'sin asignatura'}) - Vence: ${t.due_date || 'sin fecha'} - Prioridad: ${t.priority || 'Media'} - ${t.is_completed ? 'Completada' : 'Pendiente'}`
-        ).join('\n');
-        
-        const pendingTasks = tasks.filter(t => !t.is_completed);
-        const completedTasks = tasks.filter(t => t.is_completed);
-        
-        return {
-            schedule,
-            tasks,
-            contextText: `
-HORARIO DEL ESTUDIANTE:
-${scheduleText || 'No tiene clases registradas'}
+  try {
+    // Obtener horario del usuario
+    const { data: schedule, error: scheduleError } = await supabase
+      .from('schedule')
+      .select('*')
+      .eq('user_id', userId)
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true });
 
-TAREAS PENDIENTES (${pendingTasks.length}):
-${tasksText || 'No tiene tareas'}
+    if (scheduleError) throw scheduleError;
 
-ESTADÍSTICAS:
-- Total clases: ${schedule.length}
-- Total tareas: ${tasks.length}
-- Tareas pendientes: ${pendingTasks.length}
-- Tareas completadas: ${completedTasks.length}
-`.trim()
-        };
-    } catch (error) {
-        console.error('Error obteniendo contexto:', error);
-        return {
-            schedule: [],
-            tasks: [],
-            contextText: 'No se pudo obtener información del usuario.'
-        };
-    }
+    // Obtener tareas del usuario
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true });
+
+    if (tasksError) throw tasksError;
+
+    return { schedule, tasks };
+  } catch (error) {
+    console.error('Error obteniendo contexto del usuario:', error);
+    throw error;
+  }
 }
 
-/**
- * Llamar a Google Gemini API
- */
+// Función para llamar a la API de Gemini
 async function callGeminiAPI(systemPrompt, userMessage) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-        throw new Error('Gemini API key not configured');
+  const apiKey = process.env.GEMINI_API_KEY;
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [{
+      parts: [{
+        text: `${systemPrompt}\n\nUsuario: ${userMessage}`
+      }]
+    }],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 800,
     }
-    
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
-    // Combinar system prompt y mensaje del usuario
-    const fullPrompt = `${systemPrompt}\n\nUsuario: ${userMessage}`;
-    
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            contents: [{
-                parts: [{ text: fullPrompt }]
-            }],
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 800,
-                topP: 0.95
-            }
-        })
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
     });
-    
+
     if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Gemini API error: ${error}`);
+      const errorData = await response.text();
+      throw new Error(`Gemini API error: ${response.status} - ${errorData}`);
     }
-    
+
     const data = await response.json();
-    return data.candidates[0]?.content?.parts[0]?.text || 'Lo siento, no pude generar una respuesta.';
+    
+    if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+      return data.candidates[0].content.parts[0].text;
+    } else {
+      throw new Error('Respuesta inválida de Gemini API');
+    }
+  } catch (error) {
+    console.error('Error llamando a Gemini API:', error);
+    throw error;
+  }
 }
 
-/**
- * Handler principal - Export para Vercel Serverless Functions
- */
-module.exports = async function handler(req, res) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-    
-    // Handle OPTIONS for CORS preflight
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+// Handler principal de Vercel
+export default async function handler(req, res) {
+  // Solo permitir POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      success: false, 
+      error: 'Método no permitido' 
+    });
+  }
+
+  try {
+    const { message, userId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'El mensaje es requerido' 
+      });
     }
-    
-    // Solo aceptar POST
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'El ID de usuario es requerido' 
+      });
     }
-    
-    try {
-        const { message, userId } = req.body;
-        
-        if (!message || !userId) {
-            return res.status(400).json({ error: 'Missing message or userId' });
+
+    // Obtener contexto del usuario
+    const { schedule, tasks } = await getUserContext(userId);
+
+    // Construir el prompt del sistema con el contexto
+    const systemPrompt = `Eres un asistente académico inteligente para estudiantes universitarios.
+
+CONTEXTO DEL USUARIO:
+
+HORARIO DE CLASES:
+${schedule.map(c => `- ${c.subject} (${c.day_of_week}) ${c.start_time}-${c.end_time} en ${c.location}`).join('\n')}
+
+TAREAS PENDIENTES:
+${tasks.filter(t => !t.completed).map(t => `- ${t.title} (${t.subject}) - Vence: ${t.due_date}${t.priority === 'high' ? ' [ALTA PRIORIDAD]' : ''}`).join('\n')}
+
+INSTRUCCIONES:
+- Responde de forma amigable y útil
+- Usa la información del horario y tareas para dar respuestas personalizadas
+- Si te preguntan por clases hoy, calcula el día actual y busca en el horario
+- Si te preguntan por tareas, prioriza las más urgentes
+- Sé conciso pero informativo
+- Usa emojis ocasionalmente para hacer la conversación más amigable`;
+
+    // Llamar a Gemini API
+    const aiResponse = await callGeminiAPI(systemPrompt, message);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        response: aiResponse,
+        context: {
+          scheduleCount: schedule.length,
+          tasksCount: tasks.length,
+          pendingTasksCount: tasks.filter(t => !t.completed).length
         }
-        
-        // Obtener contexto del usuario
-        const context = await getUserContext(userId);
-        
-        // Construir prompt del sistema
-        const systemPrompt = `Eres Smart UNI-BOT, un asistente personal universitario inteligente. 
+      }
+    });
 
-Tu objetivo es ayudar al estudiante con su organización académica. Puedes:
-- Consultar su horario de clases
-- Revisar sus tareas pendientes y completadas
-- Dar consejos de organización y productividad
-- Responder preguntas sobre sus asignaturas
-- Sugerir prioridades basándote en fechas de entrega
-
-IMPORTANTE:
-- Sé amigable, cercano y motivador
-- Usa emojis cuando sea apropiado
-- Responde en español
-- Si no tienes información, dilo claramente
-- Las respuestas deben ser concisas (máximo 3-4 líneas)
-
-CONTEXTO DEL ESTUDIANTE:
-${context.contextText}`;
-        
-        // Llamar a Gemini API
-        const reply = await callGeminiAPI(systemPrompt, message);
-        
-        return res.status(200).json({
-            success: true,
-            reply,
-            context: {
-                totalClasses: context.schedule.length,
-                totalTasks: context.tasks.length,
-                pendingTasks: context.tasks.filter(t => !t.is_completed).length
-            }
-        });
-        
-    } catch (error) {
-        console.error('Chat API error:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Error procesando tu mensaje',
-            details: error.message
-        });
-    }
-};
+  } catch (error) {
+    console.error('Error en chat API:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error procesando tu mensaje',
+      details: error.message
+    });
+  }
+}
