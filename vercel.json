@@ -1,7 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api).*)",
+      "source": "/api/test",
+      "destination": "/vercel-api/test"
+    },
+    {
+      "source": "/api/chat",
+      "destination": "/vercel-api/chat"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/frontend/$1"
     }
   ]
