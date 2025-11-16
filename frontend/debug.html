@@ -98,7 +98,28 @@
         </div>
 
         <div class="test-section">
-            <h2>4. Información del Navegador</h2>
+            <h2>4. Env Vars (Backend)</h2>
+            <p>Muestra presencia y previews de SUPABASE_URL/ANON y GEMINI en Vercel</p>
+            <button onclick="testEnvCheck()">🧪 Probar /api/env-check</button>
+            <div id="test-env" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Debug Schedule (Backend)</h2>
+            <p>Lee `schedule` del backend para user_id objetivo</p>
+            <button onclick="testDebugSchedule()">📚 Probar /api/debug-schedule</button>
+            <div id="test-schedule" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. Debug Tasks (Backend)</h2>
+            <p>Lee `tasks` del backend para user_id objetivo</p>
+            <button onclick="testDebugTasks()">📝 Probar /api/debug-tasks</button>
+            <div id="test-tasks" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>7. Información del Navegador</h2>
             <button onclick="showBrowserInfo()">ℹ️ Ver Info del Navegador</button>
             <div id="browser-info" class="result" style="display:none;"></div>
         </div>
@@ -186,6 +207,54 @@
             }
         }
 
+        async function testEnvCheck() {
+            const el = document.getElementById('test-env');
+            el.style.display = 'block';
+            el.className = 'result loading';
+            el.textContent = 'Consultando variables de entorno...';
+            try {
+                const resp = await fetch(`${BASE_URL}/api/env-check`);
+                const data = await resp.json();
+                el.className = 'result success';
+                el.textContent = `✅ ÉXITO (Status: ${resp.status})\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                el.className = 'result error';
+                el.textContent = `❌ ERROR\n\n${error.message}`;
+            }
+        }
+
+        async function testDebugSchedule() {
+            const el = document.getElementById('test-schedule');
+            el.style.display = 'block';
+            el.className = 'result loading';
+            el.textContent = 'Consultando /api/debug-schedule...';
+            try {
+                const resp = await fetch(`${BASE_URL}/api/debug-schedule`);
+                const data = await resp.json();
+                el.className = 'result success';
+                el.textContent = `✅ ÉXITO (Status: ${resp.status})\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                el.className = 'result error';
+                el.textContent = `❌ ERROR\n\n${error.message}`;
+            }
+        }
+
+        async function testDebugTasks() {
+            const el = document.getElementById('test-tasks');
+            el.style.display = 'block';
+            el.className = 'result loading';
+            el.textContent = 'Consultando /api/debug-tasks...';
+            try {
+                const resp = await fetch(`${BASE_URL}/api/debug-tasks`);
+                const data = await resp.json();
+                el.className = 'result success';
+                el.textContent = `✅ ÉXITO (Status: ${resp.status})\n\n` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                el.className = 'result error';
+                el.textContent = `❌ ERROR\n\n${error.message}`;
+            }
+        }
+
         function showBrowserInfo() {
             const resultDiv = document.getElementById('browser-info');
             resultDiv.style.display = 'block';
@@ -197,6 +266,7 @@
                 platform: navigator.platform,
                 url: window.location.href,
                 origin: window.location.origin,
+                frontendSupabaseUrl: (window.SUPABASE_URL || 'no-disponible'),
                 timestamp: new Date().toISOString()
             };
             
