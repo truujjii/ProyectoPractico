@@ -3,6 +3,13 @@ database/
 local.settings.json
 host.json
 staticwebapp.config.json
+.env.example
 *.sh
 .git 2/
 node_modules/
+APPS_SCRIPT_SETUP.md
+DESPLIEGUE_PASO_A_PASO.md
+SETUP_COMPLETO.md
+generate-remaining-files.sh
+update-functions.sh
+deploy.sh

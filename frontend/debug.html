@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug API - Smart UniBot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug API - Smart UniBot</h1>
+        <p>Herramienta de diagnóstico para verificar las funciones serverless de Vercel</p>
+
+        <div class="test-section">
+            <h2>1. Test de Conectividad Básica</h2>
+            <p>Verifica que el endpoint /api/test responde correctamente</p>
+            <button onclick="testBasicConnectivity()">🚀 Probar /api/test</button>
+            <div id="test-basic" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Test de API de Chat</h2>
+            <p>Verifica que el endpoint /api/chat acepta mensajes</p>
+            <button onclick="testChatAPI()">💬 Probar /api/chat</button>
+            <div id="test-chat" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test Directo a Vercel-API</h2>
+            <p>Prueba acceder directamente a /vercel-api/test</p>
+            <button onclick="testDirectVercelAPI()">🔍 Probar /vercel-api/test</button>
+            <div id="test-direct" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Información del Navegador</h2>
+            <button onclick="showBrowserInfo()">ℹ️ Ver Info del Navegador</button>
+            <div id="browser-info" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+
+        async function testBasicConnectivity() {
+            const resultDiv = document.getElementById('test-basic');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Probando conectividad...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/test`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ ÉXITO (Status: ${response.status})\n\n` + 
+                                       JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR\n\n${error.message}\n\nStack: ${error.stack}`;
+            }
+        }
+
+        async function testChatAPI() {
+            const resultDiv = document.getElementById('test-chat');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Enviando mensaje de prueba...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Hola, esto es una prueba',
+                        userId: 'test-user-123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ ÉXITO (Status: ${response.status})\n\n` + 
+                                       JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR\n\n${error.message}\n\nStack: ${error.stack}`;
+            }
+        }
+
+        async function testDirectVercelAPI() {
+            const resultDiv = document.getElementById('test-direct');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Probando acceso directo...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/vercel-api/test`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ ÉXITO (Status: ${response.status})\n\n` + 
+                                       JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR\n\n${error.message}\n\nStack: ${error.stack}`;
+            }
+        }
+
+        function showBrowserInfo() {
+            const resultDiv = document.getElementById('browser-info');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            
+            const info = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                url: window.location.href,
+                origin: window.location.origin,
+                timestamp: new Date().toISOString()
+            };
+            
+            resultDiv.textContent = JSON.stringify(info, null, 2);
+        }
+    </script>
+</body>
+</html>
