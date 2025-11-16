@@ -528,6 +528,7 @@ async function queryChatbot(message) {
     try {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
+        const sessionToken = localStorage.getItem('sessionId');
         
         // Llamar a la API de chatbot con Azure OpenAI
         const response = await fetch('/api/chat', {
@@ -537,7 +538,8 @@ async function queryChatbot(message) {
             },
             body: JSON.stringify({
                 message: message,
-                userId: user.id
+                userId: user.id,
+                sessionToken
             })
         });
         

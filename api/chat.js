@@ -1,13 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// Inicializar cliente de Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
 // Función para obtener contexto del usuario desde Supabase
-async function getUserContext(userId) {
+async function getUserContext(supabase, userId) {
   try {
     console.log('Buscando datos para userId:', userId);
     
@@ -114,7 +108,7 @@ module.exports = async (req, res) => {
   console.log('Body:', JSON.stringify(req.body, null, 2));
 
   try {
-    const { message, userId } = req.body;
+    const { message, userId, sessionToken } = req.body;
 
     if (!message) {
       return res.status(400).json({ 
@@ -132,10 +126,34 @@ module.exports = async (req, res) => {
 
     console.log('Usuario ID:', userId);
     console.log('Mensaje:', message);
+    if (sessionToken) {
+      console.log('Session token recibido: sí (RLS user-context)');
+    } else {
+      console.log('Session token recibido: no (se usarán RLS por anon si existen)');
+    }
+
+    // Crear cliente de Supabase con cabecera Authorization si hay token de sesión
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      sessionToken
+        ? {
+            global: {
+              headers: {
+                Authorization: `Bearer ${sessionToken}`
+              }
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false
+            }
+          }
+        : undefined
+    );
 
     // Obtener contexto del usuario
     console.log('Obteniendo contexto del usuario...');
-    const { schedule, tasks } = await getUserContext(userId);
+    const { schedule, tasks } = await getUserContext(supabase, userId);
     console.log('Contexto obtenido:', { scheduleCount: schedule.length, tasksCount: tasks.length });
 
     // Construir el prompt del sistema con el contexto
