@@ -1,8 +1,4 @@
-api/
 database/
-*.md
-README.md
 local.settings.json
 host.json
-package.json
 *.sh
