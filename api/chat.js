@@ -98,6 +98,9 @@ module.exports = async (req, res) => {
     });
   }
 
+  console.log('=== CHAT API REQUEST ===');
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+
   try {
     const { message, userId } = req.body;
 
@@ -115,8 +118,13 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.log('Usuario ID:', userId);
+    console.log('Mensaje:', message);
+
     // Obtener contexto del usuario
+    console.log('Obteniendo contexto del usuario...');
     const { schedule, tasks } = await getUserContext(userId);
+    console.log('Contexto obtenido:', { scheduleCount: schedule.length, tasksCount: tasks.length });
 
     // Construir el prompt del sistema con el contexto
     const systemPrompt = `Eres un asistente académico inteligente para estudiantes universitarios.
@@ -124,21 +132,23 @@ module.exports = async (req, res) => {
 CONTEXTO DEL USUARIO:
 
 HORARIO DE CLASES:
-${schedule.length > 0 ? schedule.map(c => `- ${c.subject} (${c.day_of_week}) ${c.start_time}-${c.end_time} en ${c.location}`).join('\n') : 'No hay clases registradas'}
+${schedule.length > 0 ? schedule.map(c => `- ${c.subject_name || c.subject} (${c.day_of_week}) ${c.start_time}-${c.end_time} en ${c.location || 'Sin ubicación'}`).join('\n') : 'No hay clases registradas'}
 
 TAREAS PENDIENTES:
-${tasks.filter(t => !t.completed).length > 0 ? tasks.filter(t => !t.completed).map(t => `- ${t.title} (${t.subject}) - Vence: ${t.due_date}${t.priority === 'high' ? ' [ALTA PRIORIDAD]' : ''}`).join('\n') : 'No hay tareas pendientes'}
+${tasks.filter(t => !t.is_completed && !t.completed).length > 0 ? tasks.filter(t => !t.is_completed && !t.completed).map(t => `- ${t.title} (${t.subject || 'Sin asignatura'}) - Vence: ${t.due_date}${t.priority === 'high' || t.priority === 'Alta' ? ' [ALTA PRIORIDAD]' : ''}`).join('\n') : 'No hay tareas pendientes'}
 
 INSTRUCCIONES:
-- Responde de forma amigable y útil
+- Responde de forma amigable y útil en español
 - Usa la información del horario y tareas para dar respuestas personalizadas
 - Si te preguntan por clases hoy, calcula el día actual y busca en el horario
 - Si te preguntan por tareas, prioriza las más urgentes
 - Sé conciso pero informativo
 - Usa emojis ocasionalmente para hacer la conversación más amigable`;
 
+    console.log('Llamando a Gemini API...');
     // Llamar a Gemini API
     const aiResponse = await callGeminiAPI(systemPrompt, message);
+    console.log('Respuesta de Gemini obtenida');
 
     return res.status(200).json({
       success: true,
@@ -147,18 +157,20 @@ INSTRUCCIONES:
         context: {
           scheduleCount: schedule.length,
           tasksCount: tasks.length,
-          pendingTasksCount: tasks.filter(t => !t.completed).length
+          pendingTasksCount: tasks.filter(t => !t.is_completed && !t.completed).length
         }
       }
     });
 
   } catch (error) {
-    console.error('Error en chat API:', error);
+    console.error('=== ERROR EN CHAT API ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
     return res.status(500).json({
       success: false,
       error: 'Error procesando tu mensaje',
       details: error.message,
-      stack: error.stack
+      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack
     });
   }
 };
