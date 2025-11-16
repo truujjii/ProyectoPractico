@@ -9,6 +9,8 @@ const supabase = createClient(
 // Función para obtener contexto del usuario desde Supabase
 async function getUserContext(userId) {
   try {
+    console.log('Buscando datos para userId:', userId);
+    
     // Obtener horario del usuario
     const { data: schedule, error: scheduleError } = await supabase
       .from('schedule')
@@ -17,7 +19,12 @@ async function getUserContext(userId) {
       .order('day_of_week', { ascending: true })
       .order('start_time', { ascending: true });
 
-    if (scheduleError) throw scheduleError;
+    if (scheduleError) {
+      console.error('Error en schedule:', scheduleError);
+      throw scheduleError;
+    }
+    
+    console.log('Schedule encontrado:', schedule?.length || 0, 'clases');
 
     // Obtener tareas del usuario
     const { data: tasks, error: tasksError } = await supabase
@@ -26,7 +33,12 @@ async function getUserContext(userId) {
       .eq('user_id', userId)
       .order('due_date', { ascending: true });
 
-    if (tasksError) throw tasksError;
+    if (tasksError) {
+      console.error('Error en tasks:', tasksError);
+      throw tasksError;
+    }
+    
+    console.log('Tasks encontradas:', tasks?.length || 0, 'tareas');
 
     return { schedule: schedule || [], tasks: tasks || [] };
   } catch (error) {
