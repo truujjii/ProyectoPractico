@@ -4,7 +4,7 @@
  * con acceso a la base de datos del usuario
  */
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Inicializar Supabase
 const supabase = createClient(
@@ -114,21 +114,9 @@ async function callGeminiAPI(systemPrompt, userMessage) {
 }
 
 /**
- * Handler principal - Export para Vercel Serverless Functions
+ * Handler principal
  */
-module.exports = async function handler(req, res) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-    
-    // Handle OPTIONS for CORS preflight
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-    
+export default async function handler(req, res) {
     // Solo aceptar POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -185,4 +173,4 @@ ${context.contextText}`;
             details: error.message
         });
     }
-};
+}
