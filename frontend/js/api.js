@@ -525,11 +525,45 @@ async function toggleTaskComplete(taskId, isCompleted) {
  * Enviar consulta al chatbot
  */
 async function queryChatbot(message) {
-    // Por ahora retornamos un mensaje simple ya que no tenemos el backend
-    return {
-        success: true,
-        data: {
-            response: 'Lo siento, el chatbot aún no está disponible en esta versión. Estamos trabajando en ello.'
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        // Llamar a la API de chatbot con Azure OpenAI
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                userId: user.id
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    };
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return {
+                success: true,
+                data: {
+                    response: data.reply,
+                    context: data.context
+                }
+            };
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+        
+    } catch (error) {
+        console.error('Error querying chatbot:', error);
+        return {
+            success: false,
+            message: 'Lo siento, no pude procesar tu mensaje. Por favor, intenta de nuevo.'
+        };
+    }
 }
