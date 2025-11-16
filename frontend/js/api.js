@@ -551,8 +551,8 @@ async function queryChatbot(message) {
             return {
                 success: true,
                 data: {
-                    response: data.reply,
-                    context: data.context
+                    response: data.data.response,
+                    context: data.data.context
                 }
             };
         } else {
