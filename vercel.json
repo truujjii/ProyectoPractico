@@ -1,15 +1,24 @@
 {
+  "functions": {
+    "api-vercel/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/test",
-      "destination": "/vercel-api/test"
+      "destination": "/api-vercel/test"
     },
     {
       "source": "/api/chat",
-      "destination": "/vercel-api/chat"
+      "destination": "/api-vercel/chat"
     },
     {
-      "source": "/(.*)",
+      "source": "/",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/((?!api).*)",
       "destination": "/frontend/$1"
     }
   ]

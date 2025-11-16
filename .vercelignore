@@ -6,7 +6,6 @@ staticwebapp.config.json
 .env.example
 *.sh
 .git 2/
-node_modules/
 APPS_SCRIPT_SETUP.md
 DESPLIEGUE_PASO_A_PASO.md
 SETUP_COMPLETO.md
