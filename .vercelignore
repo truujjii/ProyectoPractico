@@ -4,5 +4,5 @@ local.settings.json
 host.json
 staticwebapp.config.json
 *.sh
-*.md
-README.md
+.git 2/
+node_modules/
