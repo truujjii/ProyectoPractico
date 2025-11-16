@@ -449,3 +449,55 @@ function resetChat() {
     scrollToBottom();
     showNotification('Conversación reiniciada', 'success');
 }
+
+// Manejar tecla Enter en el input
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        handleSendMessage();
+    }
+}
+
+// Manejar envío de mensaje desde el input de texto libre
+async function handleSendMessage() {
+    const input = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Limpiar input y deshabilitar
+    input.value = '';
+    input.disabled = true;
+    sendButton.disabled = true;
+    
+    // Añadir mensaje del usuario
+    addMessage(message, true);
+    
+    // Mostrar indicador de escritura
+    const typingIndicator = showTypingIndicator();
+    
+    try {
+        // Enviar a la API (IA real con Gemini)
+        const response = await queryChatbot(message);
+        
+        // Remover indicador de escritura
+        typingIndicator.remove();
+        
+        if (response.success && response.data.response) {
+            // Añadir respuesta del bot
+            addMessage(response.data.response, false);
+        } else {
+            addMessage('Lo siento, hubo un error al procesar tu mensaje. 😔', false);
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        typingIndicator.remove();
+        addMessage('Lo siento, no puedo responder en este momento. Por favor, intenta más tarde.', false);
+    } finally {
+        // Rehabilitar input
+        input.disabled = false;
+        sendButton.disabled = false;
+        input.focus();
+    }
+}

@@ -27,28 +27,38 @@
             </div>
         </div>
 
-        <!-- Input Area con botones predefinidos -->
+        <!-- Input Area -->
         <div class="input-container">
-            <div class="predefined-questions">
-                <button class="question-btn" onclick="handleQuestion('proxima-clase')">
-                    <span class="btn-icon">📚</span>
-                    <span class="btn-text">¿Cuándo es mi próxima clase?</span>
+            <!-- Botones rápidos (3 en línea horizontal) -->
+            <div class="quick-questions">
+                <button class="quick-btn" onclick="handleQuestion('clases-hoy')" title="Ver clases de hoy">
+                    📅 Clases hoy
                 </button>
-                <button class="question-btn" onclick="handleQuestion('tareas-pendientes')">
-                    <span class="btn-icon">📝</span>
-                    <span class="btn-text">¿Qué tareas tengo pendientes?</span>
+                <button class="quick-btn" onclick="handleQuestion('tareas-pendientes')" title="Ver tareas pendientes">
+                    📝 Tareas
                 </button>
-                <button class="question-btn" onclick="handleQuestion('clases-hoy')">
-                    <span class="btn-icon">📅</span>
-                    <span class="btn-text">¿Qué clases tengo hoy?</span>
+                <button class="quick-btn" onclick="handleQuestion('proxima-clase')" title="Ver próxima clase">
+                    📚 Próxima clase
                 </button>
-                <button class="question-btn" onclick="handleQuestion('horario-completo')">
-                    <span class="btn-icon">📊</span>
-                    <span class="btn-text">Ver mi horario completo</span>
-                </button>
-                <button class="question-btn" onclick="handleQuestion('tareas-completadas')">
-                    <span class="btn-icon">✅</span>
-                    <span class="btn-text">¿Cuántas tareas he completado?</span>
+            </div>
+            
+            <!-- Input de texto libre -->
+            <div class="chat-input-wrapper">
+                <input 
+                    type="text" 
+                    id="chat-input" 
+                    class="chat-input" 
+                    placeholder="Escribe tu pregunta aquí..."
+                    autocomplete="off"
+                    onkeypress="handleKeyPress(event)"
+                />
+                <button 
+                    id="send-button" 
+                    class="send-button" 
+                    onclick="handleSendMessage()"
+                    title="Enviar mensaje"
+                >
+                    ➤
                 </button>
             </div>
         </div>
