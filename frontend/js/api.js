@@ -528,9 +528,23 @@ async function queryChatbot(message) {
     try {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user) throw new Error('Usuario no autenticado');
-        const sessionToken = localStorage.getItem('sessionId');
         
-        // Llamar a la API de chatbot con Azure OpenAI
+        // Refrescar sesión para obtener token válido
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        
+        if (sessionError || !sessionData.session) {
+            // Si no hay sesión válida, redirigir al login
+            localStorage.removeItem('sessionId');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            throw new Error('Sesión expirada');
+        }
+        
+        // Actualizar token en localStorage
+        const freshToken = sessionData.session.access_token;
+        localStorage.setItem('sessionId', freshToken);
+        
+        // Llamar a la API de chatbot
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
@@ -539,7 +553,7 @@ async function queryChatbot(message) {
             body: JSON.stringify({
                 message: message,
                 userId: user.id,
-                sessionToken
+                sessionToken: freshToken
             })
         });
         
